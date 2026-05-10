@@ -50,7 +50,7 @@ export class FaceTracker {
 
     try {
       const vision = await FilesetResolver.forVisionTasks(
-        MEDIAPIPE_CONFIG.FACE_MODEL.replace('/face_landmarker/face_landmarker/float16/latest/face_landmarker.task', '/vision_wasm_internal'),
+        MEDIAPIPE_CONFIG.WASM_BASE_URL,
       )
 
       this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {

@@ -61,6 +61,9 @@ export const TRACKING_SMOOTHING = {
 
 /** MediaPipe config */
 export const MEDIAPIPE_CONFIG = {
+  /** CDN base URL for MediaPipe vision WASM files */
+  WASM_BASE_URL:
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm',
   FACE_MODEL:
     'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task',
   FACE_NUM_LANDMARKS: 478,
