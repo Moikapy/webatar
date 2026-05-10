@@ -1,13 +1,22 @@
 /**
  * AvatarGallery — Browse and select VRM avatars from OSA registry.
  *
- * Fetches MVP collections (R1–R3) thumbnails from Arweave,
- * displays them in a scrollable grid, and lets users pick one.
+ * Features:
+ *   - Search by name or number
+ *   - Pagination (25 per page)
+ *   - Denylist filtering (e.g. skip devil avatars)
+ *   - Thumbnail grid with selection ring
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { OSAClient } from '../osa/client'
 import type { Avatar } from '../osa/types'
+import { Button } from './ui/button'
+
+const PAGE_SIZE = 25
+
+/** Avatar names / terms we skip. Case-insensitive substring match. */
+const DENYLIST = ['devil']
 
 interface AvatarGalleryProps {
   onSelect: (avatar: Avatar) => void
@@ -18,6 +27,8 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [query, setQuery] = useState('')
 
   const fetchAvatars = useCallback(async () => {
     setLoading(true)
@@ -25,9 +36,10 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
     try {
       const client = new OSAClient()
       const data = await client.fetchMVPAvatars()
-      // Only show avatars that have a thumbnail and model URL
       const valid = data.filter(
-        (a) => a.thumbnail_url && a.model_file_url,
+        (a) =>
+          a.thumbnail_url && a.model_file_url &&
+          !DENYLIST.some((d) => a.name.toLowerCase().includes(d.toLowerCase())),
       )
       setAvatars(valid)
     } catch (err) {
@@ -41,9 +53,30 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
     fetchAvatars()
   }, [fetchAvatars])
 
+  // Filter by query
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return avatars
+    return avatars.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        String(a.metadata?.number ?? '').includes(q),
+    )
+  }, [avatars, query])
+
+  // Pagination
+  const total = filtered.length
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const clampedPage = Math.min(page, totalPages)
+  const start = (clampedPage - 1) * PAGE_SIZE
+  const end = Math.min(start + PAGE_SIZE, total)
+  const pageItems = filtered.slice(start, end)
+
+  const effectivePage = clampedPage !== page ? clampedPage : page
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
         Loading avatars…
       </div>
     )
@@ -51,7 +84,7 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center gap-2 py-8 text-sm text-destructive">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-destructive">
         <p>{error}</p>
         <button
           onClick={fetchAvatars}
@@ -64,12 +97,49 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Select Avatar ({avatars.length} available)
-      </h3>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 overflow-y-auto max-h-60">
-        {avatars.map((avatar) => (
+    <div className="flex flex-1 flex-col gap-3 overflow-hidden">
+      {/* Search bar */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value)
+              setPage(1)
+            }}
+            placeholder="Search by name or number…"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 pl-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+            🔍
+          </span>
+        </div>
+        {query && (
+          <button
+            onClick={() => {
+              setQuery('')
+              setPage(1)
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {/* Info bar */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground flex-shrink-0">
+        <span>
+          {total === 0
+            ? 'No avatars found'
+            : `Showing ${start + 1}-${end} of ${total} avatars`}
+        </span>
+      </div>
+
+      {/* Grid */}
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 overflow-y-auto flex-1">
+        {pageItems.map((avatar) => (
           <button
             key={avatar.id}
             onClick={() => onSelect(avatar)}
@@ -95,6 +165,31 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
           </button>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between flex-shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={effectivePage <= 1}
+          >
+            ← Prev
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Page {effectivePage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={effectivePage >= totalPages}
+          >
+            Next →
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

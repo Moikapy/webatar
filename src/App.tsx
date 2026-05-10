@@ -168,45 +168,43 @@ export function App() {
 
         {/* Avatars View */}
         <TabsContent value="avatars" className="flex flex-1 flex-col overflow-hidden">
-          <div className="flex flex-1 items-center justify-center p-6">
-            <Card className="w-full max-w-4xl h-full flex flex-col">
-              <CardContent className="flex flex-1 flex-col gap-4 p-6 overflow-hidden">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold">Avatar Gallery</h2>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!selectedAvatar}
-                    onClick={() => {
-                      const tabs = document.querySelector('[data-slot="tabs"]') as HTMLDivElement
-                      const studioBtn = tabs?.querySelector('[value="studio"]') as HTMLButtonElement
-                      if (studioBtn) studioBtn.click()
-                    }}
-                  >
-                    Go to Studio →
-                  </Button>
-                </div>
-                <AvatarGallery
-                  onSelect={setSelectedAvatar}
-                  selectedId={selectedAvatar?.id ?? null}
-                />
-                {selectedAvatar && (
-                  <div className="flex items-center gap-2 rounded-lg bg-muted p-3 text-sm">
-                    <span className="font-medium">Selected:</span>
-                    <span>{selectedAvatar.name}</span>
-                    <span className="text-muted-foreground">#{selectedAvatar.metadata?.number}</span>
-                    <a
-                      href={selectedAvatar.model_file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-auto text-xs text-primary hover:underline"
-                    >
-                      View on Arweave →
-                    </a>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div className="flex h-full flex-col gap-4 p-4 lg:p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Avatar Gallery</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!selectedAvatar}
+                onClick={() => {
+                  const tabs = document.querySelector('[data-slot="tabs"]') as HTMLDivElement
+                  const studioBtn = tabs?.querySelector('[value="studio"]') as HTMLButtonElement
+                  if (studioBtn) studioBtn.click()
+                }}
+              >
+                Go to Studio →
+              </Button>
+            </div>
+            <div className="flex flex-1 flex-col gap-4 overflow-hidden rounded-lg border border-border p-4">
+              <AvatarGallery
+                onSelect={setSelectedAvatar}
+                selectedId={selectedAvatar?.id ?? null}
+              />
+            </div>
+            {selectedAvatar && (
+              <div className="flex items-center gap-2 rounded-lg bg-muted p-3 text-sm flex-shrink-0">
+                <span className="font-medium">Selected:</span>
+                <span>{selectedAvatar.name}</span>
+                <span className="text-muted-foreground">#{selectedAvatar.metadata?.number}</span>
+                <a
+                  href={selectedAvatar.model_file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto text-xs text-primary hover:underline"
+                >
+                  View on Arweave →
+                </a>
+              </div>
+            )}
           </div>
         </TabsContent>
 
