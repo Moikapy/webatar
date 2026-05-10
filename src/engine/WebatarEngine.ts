@@ -190,8 +190,13 @@ export class WebatarEngine {
   }
 
   /**
-   * Handle face detection loss.
+   * Wire a loaded VRM into the engine for expression/bone control.
    */
+  setVRM(vrm: { expressionManager?: VRMExpressionManager | null; humanoid?: VRMHumanoid | null }): void {
+    this.expressionManager = vrm.expressionManager ?? null
+    this.humanoid = vrm.humanoid ?? null
+    this.updateState({ currentAvatarId: vrm.expressionManager ? 'loaded' : null })
+  }
   processFaceLost(): void {
     this.blinkStabilizer.reset()
     this.updateState({ faceDetected: false })

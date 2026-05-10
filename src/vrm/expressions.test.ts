@@ -14,10 +14,10 @@ function createMockManager(expressions: string[] = []): VRMExpressionManager {
   }
 
   return {
-    setValue: vi.fn((name: string, weight: { weight: number }) => {
-      values[name] = weight.weight
+    setValue: vi.fn((name: string, weight: number) => {
+      values[name] = weight
     }),
-    getValue: vi.fn((name: string) => values[name] ?? 0),
+    getValue: vi.fn((name: string) => values[name] ?? null),
     update: vi.fn(),
     expressions: expressions.map((name) => ({
       expressionName: name,
@@ -37,7 +37,7 @@ describe('vrm/expressions', () => {
     it('sets a single expression weight on the VRM manager', () => {
       const manager = createMockManager(['happy', 'sad', 'aa'])
       setVRMExpression(manager, 'happy', 0.8)
-      expect(manager.setValue).toHaveBeenCalledWith('happy', { weight: 0.8 })
+      expect(manager.setValue).toHaveBeenCalledWith('happy', 0.8)
     })
 
     it('does not throw for expressions that do not exist on the avatar', () => {
@@ -49,10 +49,10 @@ describe('vrm/expressions', () => {
     it('clamps weight to [0, 1]', () => {
       const manager = createMockManager(['happy'])
       setVRMExpression(manager, 'happy', 1.5)
-      expect(manager.setValue).toHaveBeenCalledWith('happy', { weight: 1 })
+      expect(manager.setValue).toHaveBeenCalledWith('happy', 1)
 
       setVRMExpression(manager, 'happy', -0.2)
-      expect(manager.setValue).toHaveBeenCalledWith('happy', { weight: 0 })
+      expect(manager.setValue).toHaveBeenCalledWith('happy', 0)
     })
   })
 
@@ -66,9 +66,9 @@ describe('vrm/expressions', () => {
         surprised: 0.3,
       })
 
-      expect(manager.setValue).toHaveBeenCalledWith('happy', { weight: 0.6 })
-      expect(manager.setValue).toHaveBeenCalledWith('aa', { weight: 0.8 })
-      expect(manager.setValue).toHaveBeenCalledWith('surprised', { weight: 0.3 })
+      expect(manager.setValue).toHaveBeenCalledWith('happy', 0.6)
+      expect(manager.setValue).toHaveBeenCalledWith('aa', 0.8)
+      expect(manager.setValue).toHaveBeenCalledWith('surprised', 0.3)
       expect(manager.update).toHaveBeenCalled()
     })
 
@@ -80,8 +80,8 @@ describe('vrm/expressions', () => {
       })
 
       // blinkLeft and blinkRight should be set to 0 (eyes open)
-      expect(manager.setValue).toHaveBeenCalledWith('blinkLeft', { weight: 0 })
-      expect(manager.setValue).toHaveBeenCalledWith('blinkRight', { weight: 0 })
+      expect(manager.setValue).toHaveBeenCalledWith('blinkLeft', 0)
+      expect(manager.setValue).toHaveBeenCalledWith('blinkRight', 0)
     })
 
     it('handles empty expression input', () => {
@@ -89,8 +89,8 @@ describe('vrm/expressions', () => {
 
       applyExpressionsToVRM(manager, {})
 
-      expect(manager.setValue).toHaveBeenCalledWith('happy', { weight: 0 })
-      expect(manager.setValue).toHaveBeenCalledWith('sad', { weight: 0 })
+      expect(manager.setValue).toHaveBeenCalledWith('happy', 0)
+      expect(manager.setValue).toHaveBeenCalledWith('sad', 0)
       expect(manager.update).toHaveBeenCalled()
     })
 
@@ -103,7 +103,7 @@ describe('vrm/expressions', () => {
       })
 
       // Should set happy but NOT call setValue for surprised
-      expect(manager.setValue).toHaveBeenCalledWith('happy', { weight: 0.5 })
+      expect(manager.setValue).toHaveBeenCalledWith('happy', 0.5)
     })
   })
 })

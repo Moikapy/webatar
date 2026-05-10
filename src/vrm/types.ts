@@ -5,8 +5,8 @@
  */
 
 export interface VRMExpressionManager {
-  setValue(expressionName: string, weight: { weight: number }): void
-  getValue(expressionName: string): number
+  setValue(expressionName: string, weight: number): void
+  getValue(expressionName: string): number | null
   update(): void
   readonly expressions: ReadonlyArray<{
     expressionName: string

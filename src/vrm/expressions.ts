@@ -29,7 +29,7 @@ export function setVRMExpression(
 
   // Clamp weight to [0, 1]
   const clampedWeight = Math.max(0, Math.min(1, weight))
-  manager.setValue(name, { weight: clampedWeight })
+  manager.setValue(name, clampedWeight)
 }
 
 /**
@@ -53,7 +53,7 @@ export function applyExpressionsToVRM(
   // Apply provided weights
   for (const [name, weight] of Object.entries(weights)) {
     if (name in manager.expressionMap) {
-      manager.setValue(name, { weight: Math.max(0, Math.min(1, weight)) })
+      manager.setValue(name, Math.max(0, Math.min(1, weight)))
       setExpressions.add(name)
     }
   }
@@ -61,7 +61,7 @@ export function applyExpressionsToVRM(
   // Reset all other expressions to 0
   for (const expr of manager.expressions) {
     if (!setExpressions.has(expr.expressionName)) {
-      manager.setValue(expr.expressionName, { weight: 0 })
+      manager.setValue(expr.expressionName, 0)
     }
   }
 

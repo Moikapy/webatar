@@ -1,5 +1,15 @@
-import { useState, useCallback } from 'react'
-import { WebatarEngine } from './engine'
+/**
+ * Webatar App — Webcam-driven real-time VRM avatar animation.
+ *
+ * Uses useWebatar hook to orchestrate:
+ *   - Camera permission + stream
+ *   - MediaPipe face tracking
+ *   - Three.js VRM rendering
+ *   - Expression + head rotation application
+ */
+
+import { useRef, useState, useCallback } from 'react'
+import { useWebatar } from './hooks/useWebatar'
 import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
@@ -14,44 +24,32 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
 }
 
 export function App() {
-  const [status, setStatus] = useState<string>('idle')
-  const [fps, setFps] = useState(0)
-  const [faceDetected, setFaceDetected] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
-  // @ts-expect-error TS6133 — will be used when engine wires up with React state
-  const _engineRef = useState<WebatarEngine | null>(null)[0]
+  const [avatarUrl, setAvatarUrl] = useState<string>(
+    'https://arweave.net/DUHQfXxfFPjlMzBoCyYD0Kuz7vwD7eZkT-9eOIJByzY',
+  )
+
+  const { state, error, start, stop, destroy } = useWebatar(
+    canvasRef,
+    videoRef,
+    avatarUrl,
+  )
 
   const handleStart = useCallback(async () => {
-    const canvas = document.getElementById('avatar-canvas') as HTMLCanvasElement
-    if (!canvas) return
-
-    const engine = new WebatarEngine({
-      canvas,
-      enablePoseTracking: true,
-      smoothingFactor: 0.35,
-    })
-
-    engine.onStateChange((state) => {
-      setStatus(state.status)
-      setFps(state.fps)
-      setFaceDetected(state.faceDetected)
-      if (state.error) setError(state.error)
-    })
-
-    try {
-      await engine.init()
-      engine.start()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Init failed')
-    }
-  }, [])
+    await start()
+  }, [start])
 
   const handleStop = useCallback(() => {
-    // engineRef will be used when we wire up full lifecycle
-  }, [])
+    stop()
+  }, [stop])
 
-  const statusConfig = STATUS_LABELS[status] ?? STATUS_LABELS.idle
+  const handleDestroy = useCallback(() => {
+    destroy()
+  }, [destroy])
+
+  const statusConfig = STATUS_LABELS[state.status] ?? STATUS_LABELS.idle
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
@@ -62,12 +60,12 @@ export function App() {
         </h1>
         <div className="flex items-center gap-3">
           <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
-          {fps > 0 && (
+          {state.fps > 0 && (
             <span className="text-xs text-muted-foreground tabular-nums">
-              {fps} fps
+              {state.fps} fps
             </span>
           )}
-          {faceDetected && (
+          {state.faceDetected && (
             <Badge variant="outline" className="gap-1">
               👁 Face detected
             </Badge>
@@ -87,6 +85,7 @@ export function App() {
             </CardHeader>
             <CardContent>
               <video
+                ref={videoRef}
                 id="webcam-video"
                 className="aspect-video w-full rounded-lg bg-muted"
                 autoPlay
@@ -103,6 +102,7 @@ export function App() {
           <Card className="w-full max-w-3xl">
             <CardContent className="flex items-center justify-center p-2">
               <canvas
+                ref={canvasRef}
                 id="avatar-canvas"
                 className="aspect-square w-full rounded-lg bg-muted"
               />
@@ -114,27 +114,49 @@ export function App() {
       <Separator />
 
       {/* ─── Controls ─── */}
-      <footer className="flex items-center justify-center gap-4 px-6 py-4">
-        {status === 'idle' && (
+      <footer className="flex flex-col items-center justify-center gap-3 px-6 py-4 sm:flex-row">
+        {state.status === 'idle' && (
           <Button variant="default" size="lg" onClick={handleStart}>
             Start Tracking
           </Button>
         )}
-        {status === 'tracking' && (
-          <Button variant="destructive" size="lg" onClick={handleStop}>
-            Stop
-          </Button>
+        {state.status === 'tracking' && (
+          <>
+            <Button variant="destructive" size="lg" onClick={handleStop}>
+              Stop
+            </Button>
+            <Button variant="outline" size="lg" onClick={handleDestroy}>
+              Reset
+            </Button>
+          </>
         )}
-        {(status === 'initializing') && (
+        {(state.status === 'initializing') && (
           <Button variant="secondary" size="lg" disabled>
             Initializing…
           </Button>
         )}
-        {(status === 'error' || status === 'stopped') && (
-          <Button variant="outline" size="lg" onClick={handleStart}>
-            Retry
-          </Button>
+        {(state.status === 'error' || state.status === 'stopped') && (
+          <>
+            <Button variant="outline" size="lg" onClick={handleStart}>
+              Retry
+            </Button>
+            <Button variant="ghost" size="lg" onClick={handleDestroy}>
+              Reset
+            </Button>
+          </>
         )}
+
+        {/* Avatar URL input */}
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={avatarUrl}
+            onChange={(e) => setAvatarUrl(e.target.value)}
+            placeholder="VRM URL"
+            className="w-64 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+          />
+        </div>
+
         {error && (
           <p className="text-sm text-destructive">{error}</p>
         )}
