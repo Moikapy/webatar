@@ -1,5 +1,17 @@
 import { useState, useCallback } from 'react'
 import { WebatarEngine } from './engine'
+import { Button } from './components/ui/button'
+import { Badge } from './components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
+import { Separator } from './components/ui/separator'
+
+const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  idle: { label: 'Idle', variant: 'outline' },
+  initializing: { label: 'Loading…', variant: 'secondary' },
+  tracking: { label: 'Tracking', variant: 'default' },
+  error: { label: 'Error', variant: 'destructive' },
+  stopped: { label: 'Stopped', variant: 'outline' },
+}
 
 export function App() {
   const [status, setStatus] = useState<string>('idle')
@@ -39,64 +51,92 @@ export function App() {
     // engineRef will be used when we wire up full lifecycle
   }, [])
 
+  const statusConfig = STATUS_LABELS[status] ?? STATUS_LABELS.idle
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-        <h1 className="text-2xl font-bold tracking-tight">
-          🐉 <span className="text-emerald-400">Webatar</span>
+    <div className="flex min-h-svh flex-col bg-background text-foreground">
+      {/* ─── Header ─── */}
+      <header className="flex items-center justify-between border-b border-border px-6 py-3">
+        <h1 className="text-xl font-bold tracking-tight">
+          🐉 <span className="text-primary">Webatar</span>
         </h1>
-        <div className="flex items-center gap-4 text-sm">
-          <span className="px-2 py-1 rounded bg-gray-800">{status}</span>
-          {fps > 0 && <span className="text-gray-400">{fps} fps</span>}
-          {faceDetected && <span className="text-emerald-400">👁 Face detected</span>}
+        <div className="flex items-center gap-3">
+          <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+          {fps > 0 && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {fps} fps
+            </span>
+          )}
+          {faceDetected && (
+            <Badge variant="outline" className="gap-1">
+              👁 Face detected
+            </Badge>
+          )}
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 flex flex-col lg:flex-row">
-        {/* Video preview (small) */}
-        <aside className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-gray-800 p-4">
-          <h2 className="text-xs uppercase tracking-wider text-gray-500 mb-2">Camera</h2>
-          <video
-            id="webcam-video"
-            className="w-full rounded-lg bg-gray-900"
-            autoPlay
-            playsInline
-            muted
-            style={{ transform: 'scaleX(-1)' }}
-          />
+      {/* ─── Main ─── */}
+      <main className="flex flex-1 flex-col lg:flex-row">
+        {/* Camera sidebar */}
+        <aside className="w-full lg:w-72">
+          <Card className="h-full rounded-none border-0 border-b lg:border-b-0 lg:border-r">
+            <CardHeader>
+              <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">
+                Camera
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <video
+                id="webcam-video"
+                className="aspect-video w-full rounded-lg bg-muted"
+                autoPlay
+                playsInline
+                muted
+                style={{ transform: 'scaleX(-1)' }}
+              />
+            </CardContent>
+          </Card>
         </aside>
 
-        {/* Avatar canvas (main) */}
-        <div className="flex-1 flex items-center justify-center p-4">
-          <canvas
-            id="avatar-canvas"
-            className="w-full max-w-3xl aspect-square rounded-lg bg-gray-900"
-          />
+        {/* Avatar canvas */}
+        <div className="flex flex-1 items-center justify-center p-4 lg:p-6">
+          <Card className="w-full max-w-3xl">
+            <CardContent className="flex items-center justify-center p-2">
+              <canvas
+                id="avatar-canvas"
+                className="aspect-square w-full rounded-lg bg-muted"
+              />
+            </CardContent>
+          </Card>
         </div>
       </main>
 
-      {/* Controls */}
-      <footer className="px-6 py-4 border-t border-gray-800 flex items-center justify-center gap-4">
+      <Separator />
+
+      {/* ─── Controls ─── */}
+      <footer className="flex items-center justify-center gap-4 px-6 py-4">
         {status === 'idle' && (
-          <button
-            onClick={handleStart}
-            className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-medium transition-colors"
-          >
+          <Button variant="default" size="lg" onClick={handleStart}>
             Start Tracking
-          </button>
+          </Button>
         )}
         {status === 'tracking' && (
-          <button
-            onClick={handleStop}
-            className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-medium transition-colors"
-          >
+          <Button variant="destructive" size="lg" onClick={handleStop}>
             Stop
-          </button>
+          </Button>
+        )}
+        {(status === 'initializing') && (
+          <Button variant="secondary" size="lg" disabled>
+            Initializing…
+          </Button>
+        )}
+        {(status === 'error' || status === 'stopped') && (
+          <Button variant="outline" size="lg" onClick={handleStart}>
+            Retry
+          </Button>
         )}
         {error && (
-          <p className="text-red-400 text-sm">Error: {error}</p>
+          <p className="text-sm text-destructive">{error}</p>
         )}
       </footer>
     </div>
