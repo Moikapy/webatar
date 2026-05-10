@@ -138,15 +138,15 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
       </div>
 
       {/* Grid — fixed 5 columns for clean 25-item pages */}
-      <div className="grid grid-cols-5 gap-3 overflow-y-auto flex-1 content-start">
+      <div className="grid grid-cols-5 gap-2 overflow-y-auto flex-1 content-start">
         {pageItems.map((avatar) => (
           <button
             key={avatar.id}
             onClick={() => onSelect(avatar)}
-            className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-150 hover:scale-[1.02] hover:shadow-lg hover:ring-2 hover:ring-primary/50 ${
+            className={`group relative overflow-hidden rounded-lg border-2 transition-colors duration-150 ${
               selectedId === avatar.id
-                ? 'ring-2 ring-primary border-primary shadow-lg'
-                : 'border-border hover:border-primary/30'
+                ? 'ring-2 ring-primary border-primary'
+                : 'border-border hover:border-primary/40'
             }`}
             style={{ aspectRatio: '1 / 1' }}
             title={`${avatar.name} (${avatar.metadata?.number ?? ''})`}
@@ -154,13 +154,13 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
             <img
               src={avatar.thumbnail_url}
               alt={avatar.name}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-150 group-hover:scale-105"
               loading="lazy"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none'
               }}
             />
-            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 text-[11px] font-semibold text-white truncate">
+            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-[11px] font-medium text-white truncate">
               {avatar.name}
             </span>
           </button>
