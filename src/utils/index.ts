@@ -1,0 +1,1 @@
+export { lerp, clamp, degToRad, radToDeg, distance3D, distance2D } from './math'
