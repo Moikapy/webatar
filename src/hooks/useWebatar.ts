@@ -142,15 +142,22 @@ export function useWebatar(
       const vrm = await loader.load(vrmUrl)
 
       // Wire VRM into engine
+      const vrmAny = vrm as any
+      console.log('[useWebatar] VRM loaded:', {
+        hasExpressionManager: !!vrmAny.expressionManager,
+        hasHumanoid: !!vrmAny.humanoid,
+        hasScene: !!vrmAny.scene,
+      })
       engine.setVRM({
-        expressionManager: vrm.expressionManager ?? null,
-        humanoid: vrm.humanoid ?? null,
+        expressionManager: vrmAny.expressionManager ?? null,
+        humanoid: vrmAny.humanoid ?? null,
       })
 
       setIsReady(true)
 
       // 5. Start tracking loop at ~30fps
       isRunningRef.current = true
+      let trackingFrameCount = 0
       intervalRef.current = setInterval(() => {
         if (!isRunningRef.current) return
         if (!video.readyState || video.paused) return
@@ -160,6 +167,14 @@ export function useWebatar(
         if (results) {
           engine.processFaceFrame(results.blendShapes)
           engine.processHeadRotation(results.headRotation)
+          trackingFrameCount++
+          if (trackingFrameCount === 1) {
+            console.log('[useWebatar] First tracking frame received', {
+              faceDetected: results.faceDetected,
+              blendShapeCount: Object.keys(results.blendShapes).length,
+              headRotation: results.headRotation,
+            })
+          }
         } else {
           engine.processFaceLost()
         }

@@ -62,7 +62,7 @@ export function rotateVRMBone(
 ): void {
   console.assert(typeof boneName === 'string' && boneName.length > 0, 'bone name must be non-empty')
 
-  const node = humanoid.getBoneNode(boneName)
+  const node = humanoid.getNormalizedBoneNode(boneName)
   if (!node) return // Bone not available on this avatar — graceful no-op
 
   const [x, y, z, w] = eulerToQuaternion(rotation)

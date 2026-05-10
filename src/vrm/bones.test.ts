@@ -14,7 +14,7 @@ function createMockHumanoid(availableBones: string[] = []): VRMHumanoid {
   }
 
   return {
-    getBoneNode: vi.fn((boneName: string) => boneNodes.get(boneName) ?? null),
+    getNormalizedBoneNode: vi.fn((boneName: string) => boneNodes.get(boneName) ?? null),
   } as unknown as VRMHumanoid
 }
 
@@ -25,14 +25,14 @@ describe('vrm/bones', () => {
 
       rotateVRMBone(humanoid, 'head', { x: 0.1, y: 0.2, z: 0.0 })
 
-      expect(humanoid.getBoneNode).toHaveBeenCalledWith('head')
+      expect(humanoid.getNormalizedBoneNode).toHaveBeenCalledWith('head')
     })
 
     it('does nothing for a bone that does not exist on the avatar', () => {
       const humanoid = createMockHumanoid(['head'])
 
       expect(() => rotateVRMBone(humanoid, 'neck', { x: 0.1, y: 0, z: 0 })).not.toThrow()
-      expect(humanoid.getBoneNode).toHaveBeenCalledWith('neck')
+      expect(humanoid.getNormalizedBoneNode).toHaveBeenCalledWith('neck')
     })
 
     it('converts euler angles to quaternion correctly for zero rotation', () => {
@@ -40,7 +40,7 @@ describe('vrm/bones', () => {
 
       rotateVRMBone(humanoid, 'head', { x: 0, y: 0, z: 0 })
 
-      const node = humanoid.getBoneNode('head')!
+      const node = humanoid.getNormalizedBoneNode('head')!
       expect(node.quaternion.set).toHaveBeenCalledWith(0, 0, 0, 1)
     })
 
@@ -50,7 +50,7 @@ describe('vrm/bones', () => {
 
       rotateVRMBone(humanoid, 'head', { x: 0, y: yaw, z: 0 })
 
-      const node = humanoid.getBoneNode('head')!
+      const node = humanoid.getNormalizedBoneNode('head')!
       const calls = (node.quaternion.set as ReturnType<typeof vi.fn>).mock.calls
       expect(calls.length).toBeGreaterThan(0)
       expect(calls[0][0]).toBeCloseTo(0, 5)
@@ -75,7 +75,7 @@ describe('vrm/bones', () => {
 
       for (const bone of bones) {
         rotateVRMBone(humanoid, bone, { x: 0, y: 0, z: 0 })
-        expect(humanoid.getBoneNode).toHaveBeenCalledWith(bone)
+        expect(humanoid.getNormalizedBoneNode).toHaveBeenCalledWith(bone)
       }
     })
   })

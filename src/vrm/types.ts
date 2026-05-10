@@ -19,7 +19,8 @@ export interface VRMExpressionManager {
 }
 
 export interface VRMHumanoid {
-  getBoneNode(boneName: string): { quaternion: { set: (x: number, y: number, z: number, w: number) => void } } | null
+  /** Get a normalized bone node by VRM bone name (e.g. 'head', 'neck'). */
+  getNormalizedBoneNode(boneName: string): { quaternion: { set: (x: number, y: number, z: number, w: number) => void } } | null
 }
 
 export interface VRMInstance {
