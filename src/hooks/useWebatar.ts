@@ -114,6 +114,7 @@ export function useWebatar(
       const tracker = new FaceTracker()
       trackerRef.current = tracker
       await tracker.init()
+      tracker.startTracking() // ready → tracking, or processFrame returns null
 
       // 3. Create WebatarEngine
       const engine = new WebatarEngine({
