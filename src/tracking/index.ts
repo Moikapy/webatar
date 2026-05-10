@@ -1,0 +1,2 @@
+export { computeVRMExpressions, computeCompositeExpressions, filterNoise, ARKIT_TO_VRM, EXPRESSION_THRESHOLD } from './expression-map'
+export { lerp, lerpVec3, smoothExpressions, BlinkStabilizer } from './smoothing'
