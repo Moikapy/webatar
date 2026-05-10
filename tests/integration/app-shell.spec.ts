@@ -327,3 +327,91 @@ test.describe('Full Pipeline Smoke Test', () => {
     expect(result.blinkWeight).toBeLessThan(0.5)
   })
 })
+
+test.describe('VRM Loader (Browser)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(2000)
+  })
+
+  test('VRMLoader module loads in browser', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { VRMLoader } = await import('/src/vrm/loader.ts')
+      return { hasClass: typeof VRMLoader === 'function' }
+    })
+
+    expect(result.hasClass).toBe(true)
+  })
+
+  test('VRMLoader creates Three.js scene and renderer', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { VRMLoader } = await import('/src/vrm/loader.ts')
+      const canvas = document.getElementById('avatar-canvas') as HTMLCanvasElement
+      const loader = new VRMLoader(canvas)
+
+      const state = loader.state
+
+      const initialState = {
+        isLoaded: state.isLoaded,
+        isRendering: state.isRendering,
+        modelUrl: state.modelUrl,
+        vrmIsNull: loader.vrm === null,
+      }
+
+      loader.destroy()
+      return initialState
+    })
+
+    expect(result.isLoaded).toBe(false)
+    expect(result.isRendering).toBe(false)
+    expect(result.vrmIsNull).toBe(true)
+  })
+
+  test('VRMLoader state transitions work', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { VRMLoader } = await import('/src/vrm/loader.ts')
+      const canvas = document.getElementById('avatar-canvas') as HTMLCanvasElement
+      const loader = new VRMLoader(canvas)
+
+      const states: Array<{ isLoaded: boolean; isRendering: boolean }> = []
+      loader.onStateChange((state) => {
+        states.push({ isLoaded: state.isLoaded, isRendering: state.isRendering })
+      })
+
+      loader.startRenderLoop()
+      const afterStart = { isRendering: loader.state.isRendering }
+
+      loader.stopRenderLoop()
+      const afterStop = { isRendering: loader.state.isRendering }
+
+      loader.destroy()
+
+      return { afterStart, afterStop, states }
+    })
+
+    expect(result.afterStart.isRendering).toBe(true)
+    expect(result.afterStop.isRendering).toBe(false)
+    expect(result.states.length).toBeGreaterThanOrEqual(2)
+  })
+
+  test('VRMLoader handles load rejection gracefully', async ({ page }) => {
+    const result = await page.evaluate(async () => {
+      const { VRMLoader } = await import('/src/vrm/loader.ts')
+      const canvas = document.getElementById('avatar-canvas') as HTMLCanvasElement
+      const loader = new VRMLoader(canvas)
+
+      try {
+        await loader.load('https://example.com/nonexistent.vrm')
+        return { ok: true }
+      } catch (err) {
+        return { ok: false, error: (err as Error).message }
+      } finally {
+        loader.destroy()
+      }
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain('load failed')
+  })
+})
