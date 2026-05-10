@@ -26,10 +26,10 @@ test.describe('App Shell', () => {
   })
 
   test('renders the Start Tracking button in idle state', async ({ page }) => {
-    const startButton = page.getByRole('button', { name: /start tracking/i })
-    await expect(startButton).toBeVisible()
-    // Button is disabled until an avatar is selected
-    await expect(startButton).toBeDisabled()
+    // When no avatar is selected, button shows "Select an Avatar"
+    const selectButton = page.getByRole('button', { name: /select an avatar/i })
+    await expect(selectButton).toBeVisible()
+    await expect(selectButton).toBeDisabled()
   })
 
   test('does not show Stop button in idle state', async ({ page }) => {

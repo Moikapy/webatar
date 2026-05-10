@@ -1,9 +1,10 @@
 /**
  * Webatar Studio App — Three views: Studio, Avatars, Settings.
  *
- * - Studio: Full-screen camera + avatar rendering + controls
- * - Avatars: Full-screen gallery grid to browse/pick avatars
- * - Settings: Configuration (VRM URL, tracking options, etc.)
+ * Features:
+ *   - Persisted avatar selection via localStorage
+ *   - Tab navigation between Studio, Avatars, Settings
+ *   - Real-time face tracking with VRM avatar rendering
  */
 
 import { useRef, useState, useCallback } from 'react'
@@ -16,6 +17,34 @@ import { Card, CardContent } from './components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
 import { Separator } from './components/ui/separator'
 
+const STORAGE_KEY = 'webatar-selected-avatar'
+
+/** Save minimal avatar info to localStorage */
+function saveAvatar(avatar: Avatar | null): void {
+  try {
+    if (avatar) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        id: avatar.id,
+        name: avatar.name,
+        model_file_url: avatar.model_file_url,
+        thumbnail_url: avatar.thumbnail_url,
+        metadata: avatar.metadata,
+      }))
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  } catch { /* localStorage may be unavailable */ }
+}
+
+/** Load saved avatar info from localStorage (partial — no project_id etc.) */
+function loadAvatar(): Pick<Avatar, 'id' | 'name' | 'model_file_url' | 'thumbnail_url' | 'metadata'> | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch { return null }
+}
+
 const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   idle: { label: 'Idle', variant: 'outline' },
   initializing: { label: 'Loading…', variant: 'secondary' },
@@ -27,8 +56,25 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
 export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [activeTab, setActiveTab] = useState('studio')
 
-  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
+  // Restore last-selected avatar from localStorage
+  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(() => {
+    const saved = loadAvatar()
+    if (!saved) return null
+    // Reconstruct a partial Avatar from saved data
+    // Missing fields (description, is_public, etc.) don't matter for rendering
+    return {
+      ...saved,
+      project_id: '',
+      description: '',
+      is_public: true,
+      created_at: '',
+      updated_at: '',
+      format: 'VRM' as const,
+    } as Avatar
+  })
+
   const avatarUrl = selectedAvatar?.model_file_url ?? null
 
   const { state, error, start, stop, destroy } = useWebatar(
@@ -36,6 +82,12 @@ export function App() {
     videoRef,
     avatarUrl ?? undefined,
   )
+
+  // Persist avatar selection
+  const handleSelectAvatar = useCallback((avatar: Avatar) => {
+    setSelectedAvatar(avatar)
+    saveAvatar(avatar)
+  }, [])
 
   const handleStart = useCallback(async () => {
     await start()
@@ -82,10 +134,10 @@ export function App() {
       </header>
 
       {/* ─── Tabs ─── */}
-      <Tabs defaultValue="studio" className="flex flex-1 flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
         <TabsList variant="line" className="mx-6 mt-2">
           <TabsTrigger value="studio">🎬 Studio</TabsTrigger>
-          <TabsTrigger value="avatars">🧑‍🎨 Avatars ({selectedAvatar ? '1 selected' : 'none'})</TabsTrigger>
+          <TabsTrigger value="avatars">🧑‍🎨 Avatars {selectedAvatar ? '✓' : ''}</TabsTrigger>
           <TabsTrigger value="settings">⚙️ Settings</TabsTrigger>
         </TabsList>
 
@@ -134,7 +186,7 @@ export function App() {
                 onClick={handleStart}
                 disabled={!avatarUrl}
               >
-                Start Tracking
+                {avatarUrl ? 'Start Tracking' : 'Select an Avatar →'}
               </Button>
             )}
             {state.status === 'tracking' && (
@@ -171,22 +223,19 @@ export function App() {
           <div className="flex h-full flex-col gap-4 p-4 lg:p-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Avatar Gallery</h2>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!selectedAvatar}
-                onClick={() => {
-                  const tabs = document.querySelector('[data-slot="tabs"]') as HTMLDivElement
-                  const studioBtn = tabs?.querySelector('[value="studio"]') as HTMLButtonElement
-                  if (studioBtn) studioBtn.click()
-                }}
-              >
-                Go to Studio →
-              </Button>
+              {selectedAvatar && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActiveTab('studio')}
+                >
+                  Go to Studio →
+                </Button>
+              )}
             </div>
             <div className="flex flex-1 flex-col gap-4 overflow-hidden rounded-lg border border-border p-4">
               <AvatarGallery
-                onSelect={setSelectedAvatar}
+                onSelect={handleSelectAvatar}
                 selectedId={selectedAvatar?.id ?? null}
               />
             </div>
