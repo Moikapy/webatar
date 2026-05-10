@@ -59,7 +59,10 @@ test.describe('App Shell', () => {
   })
 
   test('Camera heading is visible', async ({ page }) => {
-    await expect(page.getByText('Camera')).toBeVisible()
+    // Camera label moved to Studio tab video element (no longer a heading)
+    // Verify the video element exists instead
+    const video = page.locator('video#webcam-video')
+    await expect(video).toBeVisible()
   })
 
   test('fps counter not shown when fps is 0', async ({ page }) => {
