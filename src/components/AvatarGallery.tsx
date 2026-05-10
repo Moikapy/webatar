@@ -137,17 +137,18 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
         </span>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 overflow-y-auto flex-1">
+      {/* Grid — fixed 5 columns for clean 25-item pages */}
+      <div className="grid grid-cols-5 gap-3 overflow-y-auto flex-1 content-start">
         {pageItems.map((avatar) => (
           <button
             key={avatar.id}
             onClick={() => onSelect(avatar)}
-            className={`group relative aspect-square overflow-hidden rounded-lg border transition-all hover:ring-2 hover:ring-primary ${
+            className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-150 hover:scale-[1.02] hover:shadow-lg hover:ring-2 hover:ring-primary/50 ${
               selectedId === avatar.id
-                ? 'ring-2 ring-primary border-primary'
-                : 'border-border'
+                ? 'ring-2 ring-primary border-primary shadow-lg'
+                : 'border-border hover:border-primary/30'
             }`}
+            style={{ aspectRatio: '1 / 1' }}
             title={`${avatar.name} (${avatar.metadata?.number ?? ''})`}
           >
             <img
@@ -159,7 +160,7 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
                 (e.target as HTMLImageElement).style.display = 'none'
               }}
             />
-            <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-[10px] font-medium text-white truncate">
+            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1.5 text-[11px] font-semibold text-white truncate">
               {avatar.name}
             </span>
           </button>
