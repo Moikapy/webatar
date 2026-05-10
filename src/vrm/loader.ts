@@ -85,7 +85,9 @@ export class VRMLoader {
           // Add to scene
           this.scene.add(vrm.scene)
 
-          // Position camera to frame the model
+          // Rotate 180° on Y so model faces the camera
+          // VRM default is +Z forward; Three.js camera looks at -Z
+          vrm.scene.rotation.y = Math.PI
           this.frameCamera(vrm.scene)
 
           this.currentVRM = vrm

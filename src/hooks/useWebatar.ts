@@ -28,13 +28,10 @@ export interface UseWebatarReturn {
   destroy: () => void
 }
 
-const DEFAULT_VRM_URL =
-  'https://arweave.net/DUHQfXxfFPjlMzBoCyYD0Kuz7vwD7eZkT-9eOIJByzY'
-
 export function useWebatar(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
   videoRef: React.RefObject<HTMLVideoElement | null>,
-  vrmUrl: string = DEFAULT_VRM_URL,
+  vrmUrl: string | undefined = undefined,
 ): UseWebatarReturn {
   const [uiState, setUiState] = useState<WebatarState>({
     status: 'idle',
@@ -133,7 +130,13 @@ export function useWebatar(
         setUiState({ ...state })
       })
 
-      // 4. Create VRMLoader and load VRM
+      // 4. Create VRMLoader and load VRM (if URL provided)
+      if (!vrmUrl) {
+        setError('No avatar selected. Pick one from the gallery.')
+        cleanup()
+        return
+      }
+
       const loader = new VRMLoader(canvas)
       loaderRef.current = loader
       const vrm = await loader.load(vrmUrl)

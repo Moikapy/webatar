@@ -10,6 +10,8 @@
 
 import { useRef, useState, useCallback } from 'react'
 import { useWebatar } from './hooks/useWebatar'
+import { AvatarGallery } from './components/AvatarGallery'
+import type { Avatar } from './osa/types'
 import { Button } from './components/ui/button'
 import { Badge } from './components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
@@ -27,14 +29,13 @@ export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  const [avatarUrl, setAvatarUrl] = useState<string>(
-    'https://arweave.net/DUHQfXxfFPjlMzBoCyYD0Kuz7vwD7eZkT-9eOIJByzY',
-  )
+  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
+  const avatarUrl = selectedAvatar?.model_file_url ?? null
 
   const { state, error, start, stop, destroy } = useWebatar(
     canvasRef,
     videoRef,
-    avatarUrl,
+    avatarUrl ?? undefined,
   )
 
   const handleStart = useCallback(async () => {
@@ -74,11 +75,11 @@ export function App() {
       </header>
 
       {/* ─── Main ─── */}
-      <main className="flex flex-1 flex-col lg:flex-row">
-        {/* Camera sidebar */}
-        <aside className="w-full lg:w-72">
-          <Card className="h-full rounded-none border-0 border-b lg:border-b-0 lg:border-r">
-            <CardHeader>
+      <main className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+        {/* Sidebar: Camera + Avatar Gallery */}
+        <aside className="flex w-full flex-col lg:w-80 overflow-y-auto">
+          <Card className="rounded-none border-0 border-b lg:border-b-0 lg:border-r">
+            <CardHeader className="pb-2">
               <CardTitle className="text-xs uppercase tracking-widest text-muted-foreground">
                 Camera
               </CardTitle>
@@ -95,6 +96,13 @@ export function App() {
               />
             </CardContent>
           </Card>
+
+          <div className="border-t border-border p-4">
+            <AvatarGallery
+              onSelect={setSelectedAvatar}
+              selectedId={selectedAvatar?.id ?? null}
+            />
+          </div>
         </aside>
 
         {/* Avatar canvas */}
@@ -116,7 +124,12 @@ export function App() {
       {/* ─── Controls ─── */}
       <footer className="flex flex-col items-center justify-center gap-3 px-6 py-4 sm:flex-row">
         {state.status === 'idle' && (
-          <Button variant="default" size="lg" onClick={handleStart}>
+          <Button
+            variant="default"
+            size="lg"
+            onClick={handleStart}
+            disabled={!avatarUrl}
+          >
             Start Tracking
           </Button>
         )}
@@ -146,16 +159,14 @@ export function App() {
           </>
         )}
 
-        {/* Avatar URL input */}
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            placeholder="VRM URL"
-            className="w-64 rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
-          />
-        </div>
+        {selectedAvatar && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>🎭 {selectedAvatar.name}</span>
+            {selectedAvatar.metadata?.number && (
+              <span className="text-xs">#{selectedAvatar.metadata.number}</span>
+            )}
+          </div>
+        )}
 
         {error && (
           <p className="text-sm text-destructive">{error}</p>
