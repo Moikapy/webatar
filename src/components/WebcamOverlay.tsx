@@ -1,18 +1,12 @@
 /**
- * WebcamOverlay — Toggleable debug overlay showing webcam feed,
- * face mesh landmarks, and blend shape labels over the avatar canvas.
+ * WebcamOverlay — Debug overlay that draws face mesh landmarks and
+ * blend shape labels on top of the webcam video feed.
  *
- * Architecture: Video is the master switch. Landmarks and blend shapes
- * render ON TOP of the webcam video — they're meaningless without face context.
- * Enabling video hides the sidebar video panel (avoid duplicate).
+ * Sits in the left panel on top of the <video> element.
+ * Only draws when the debug toggle is active.
  *
- * Layers:
- *   - video: semi-transparent webcam feed drawn via canvas drawImage
- *   - landmarks: face mesh dots (only visible when video is ON)
- *   - blendShapes: active blend shape names + weights (only visible when video is ON)
- *
- * All rendering happens on a single 2D overlay canvas — no DOM manipulation
- * of the video element needed.
+ * The overlay canvas runs its own rAF loop for drawing,
+ * not tied to the 30fps tracking interval.
  */
 
 import { useRef, useEffect, useCallback } from 'react'
@@ -27,32 +21,30 @@ export interface OverlayLayers {
 }
 
 interface WebcamOverlayProps {
-  videoRef: React.RefObject<HTMLVideoElement | null>
   landmarks: ReadonlyArray<{ x: number; y: number; z: number }>
   blendShapes: Readonly<Record<string, number>>
   layers: OverlayLayers
-  videoOpacity?: number
   className?: string
 }
 
 /**
- * WebcamOverlay renders the debug overlay on top of the avatar canvas.
- * Video is the master layer — landmarks and blend shapes only draw
- * when the video layer is active, since they need face context to be meaningful.
+ * WebcamOverlay renders landmarks and blend shape labels on top of
+ * the webcam video. The <video> element is the visual background —
+ * this canvas only adds the debug data on top.
  *
- * The overlay canvas runs its own rAF loop for drawing,
- * not tied to the 30fps tracking interval.
+ * When `layers.video` is false, the canvas is transparent.
+ * When `layers.video` is true, landmarks and blend shapes render.
  */
 export function WebcamOverlay({
-  videoRef,
   landmarks,
   blendShapes,
   layers,
-  videoOpacity = OVERLAY_DEFAULTS.VIDEO.defaultOpacity,
   className,
 }: WebcamOverlayProps) {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef<number | null>(null)
+
+  const showDebug = layers.video && (layers.landmarks || layers.blendShapes)
 
   const drawFrame = useCallback(() => {
     const canvas = overlayCanvasRef.current
@@ -72,23 +64,10 @@ export function WebcamOverlay({
     // Clear previous frame
     ctx.clearRect(0, 0, width, height)
 
-    // Layer 1: Draw video frame as background
-    if (layers.video) {
-      const video = videoRef.current
-      if (video && video.readyState >= 2) {
-        ctx.save()
-        ctx.globalAlpha = videoOpacity
-        // Mirror the video horizontally to match the landmark mirroring
-        ctx.translate(width, 0)
-        ctx.scale(-1, 1)
-        ctx.drawImage(video, 0, 0, width, height)
-        ctx.restore()
-      }
-    }
+    if (!showDebug) return
 
-    // Layer 2: Draw face mesh landmarks (only over video — need face context)
-    const showLandmarks = layers.landmarks && layers.video && landmarks.length > 0
-    if (showLandmarks) {
+    // Draw face mesh landmarks
+    if (layers.landmarks && landmarks.length > 0) {
       const landmarkStyle: LandmarkStyle = {
         color: OVERLAY_DEFAULTS.LANDMARK.color,
         radius: OVERLAY_DEFAULTS.LANDMARK.radius,
@@ -97,9 +76,8 @@ export function WebcamOverlay({
       drawFaceLandmarks(ctx, landmarks, landmarkStyle, width, height, true)
     }
 
-    // Layer 3: Draw blend shape labels (only over video — need face context)
-    const showBlendShapes = layers.blendShapes && layers.video && Object.keys(blendShapes).length > 0
-    if (showBlendShapes) {
+    // Draw blend shape labels
+    if (layers.blendShapes && Object.keys(blendShapes).length > 0) {
       const labelStyle: LabelStyle = {
         color: OVERLAY_DEFAULTS.LABEL.color,
         fontSize: OVERLAY_DEFAULTS.LABEL.fontSize,
@@ -112,7 +90,7 @@ export function WebcamOverlay({
       }
       drawBlendShapeLabels(ctx, blendShapes, labelStyle, width, height)
     }
-  }, [videoRef, landmarks, blendShapes, layers, videoOpacity])
+  }, [landmarks, blendShapes, layers.landmarks, layers.blendShapes, showDebug])
 
   useEffect(() => {
     let active = true
@@ -123,8 +101,8 @@ export function WebcamOverlay({
       rafRef.current = requestAnimationFrame(loop)
     }
 
-    // Start rAF loop if any layer is active
-    if (layers.video || layers.landmarks || layers.blendShapes) {
+    // Start rAF loop if debug overlay is active
+    if (showDebug) {
       rafRef.current = requestAnimationFrame(loop)
     }
 
@@ -135,7 +113,7 @@ export function WebcamOverlay({
         rafRef.current = null
       }
     }
-  }, [drawFrame, layers.video, layers.landmarks, layers.blendShapes])
+  }, [drawFrame, showDebug])
 
   return (
     <canvas
@@ -148,7 +126,7 @@ export function WebcamOverlay({
         width: '100%',
         height: '100%',
         pointerEvents: 'none',
-        zIndex: 20,
+        zIndex: 10,
       }}
     />
   )

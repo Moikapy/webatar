@@ -4,7 +4,9 @@
  * Features:
  *   - Persisted avatar selection via localStorage
  *   - Tab navigation between Studio, Avatars, Settings
+ *   - 50/50 split view: webcam+debug on left, avatar on right
  *   - Real-time face tracking with VRM avatar rendering
+ *   - Debug overlay shows landmarks and blend shapes on the webcam feed
  */
 
 import { useRef, useState, useCallback } from 'react'
@@ -57,8 +59,9 @@ export function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [activeTab, setActiveTab] = useState<TabValue>('studio')
-
   const [showDebugOverlay, setShowDebugOverlay] = useState(false)
+  const [splitRatio, setSplitRatio] = useState(50) // percentage for left panel
+  const isDragging = useRef(false)
 
   // Restore last-selected avatar from localStorage
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(() => {
@@ -101,7 +104,32 @@ export function App() {
     destroy()
   }, [destroy])
 
+  // Resize handler for the split pane drag
+  const handleMouseDown = useCallback(() => {
+    isDragging.current = true
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }, [])
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging.current) return
+    const container = e.currentTarget
+    const rect = container.getBoundingClientRect()
+    const ratio = ((e.clientX - rect.left) / rect.width) * 100
+    setSplitRatio(Math.max(20, Math.min(80, ratio)))
+  }, [])
+
+  const handleMouseUp = useCallback(() => {
+    isDragging.current = false
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }, [])
+
   const statusConfig = STATUS_LABELS[state.status] ?? STATUS_LABELS.idle
+
+  const overlayLayers = showDebugOverlay
+    ? { video: true, landmarks: true, blendShapes: true }
+    : { video: false, landmarks: false, blendShapes: false }
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
@@ -175,95 +203,112 @@ export function App() {
 
       {/* ─── Main content ─── */}
       <main className="flex flex-1 flex-col pt-14">
-        {/* Studio View */}
+        {/* Studio View — 50/50 split: webcam+debug | avatar */}
         {activeTab === 'studio' && (
-          <div className="flex flex-1 flex-col">
-            <div className="flex flex-1 flex-col lg:flex-row">
-              {/* Camera panel — hidden when overlay video is active (avoid duplicate) */}
-              <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border ${showDebugOverlay ? 'hidden' : ''}`}>
-                <div className="p-4">
-                  <p className="text-caption uppercase tracking-widest text-muted-foreground mb-3">
-                    Camera
-                  </p>
-                  <video
-                    ref={videoRef}
-                    id="webcam-video"
-                    className="aspect-video w-full rounded-lg bg-muted"
-                    autoPlay
-                    playsInline
-                    muted
-                    style={{ transform: 'scaleX(-1)' }}
-                  />
-                </div>
-              </aside>
-
-              {/* Avatar canvas */}
-              <div className="flex flex-1 flex-col items-center justify-center p-4 lg:p-8">
-                <div className="relative w-full max-w-3xl">
-                  <canvas
-                    ref={canvasRef}
-                    id="avatar-canvas"
-                    className="aspect-square w-full rounded-lg bg-muted"
-                  />
-                  <WebcamOverlay
-                    videoRef={videoRef}
-                    landmarks={latestLandmarks}
-                    blendShapes={latestBlendShapes}
-                    layers={showDebugOverlay ? { video: true, landmarks: true, blendShapes: true } : { video: false, landmarks: false, blendShapes: false }}
-                    className="aspect-square w-full rounded-lg"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Controls footer */}
-            <div className="flex items-center justify-center gap-3 border-t border-border px-6 py-4">
-              {state.status === 'idle' && (
+          <div
+            className="flex flex-1 flex-col lg:flex-row"
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* Left panel: webcam + debug overlay */}
+            <div
+              className="flex flex-col border-b lg:border-b-0 lg:border-r border-border"
+              style={{ width: `${splitRatio}%`, minWidth: '20%', maxWidth: '80%' }}
+            >
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+                <p className="text-caption uppercase tracking-widest text-muted-foreground">
+                  Camera
+                </p>
                 <button
-                  className={avatarUrl ? 'btn-primary' : 'btn-primary opacity-40 cursor-not-allowed'}
-                  onClick={handleStart}
-                  disabled={!avatarUrl}
-                >
-                  {avatarUrl ? 'Start Tracking' : 'Select an Avatar →'}
-                </button>
-              )}
-              {state.status === 'tracking' && (
-                <>
-                  <button className="bg-destructive/10 text-destructive hover:bg-destructive/20 px-6 py-3 rounded-md font-medium text-sm transition-colors" onClick={handleStop}>
-                    Stop
-                  </button>
-                  <button className="btn-outline" onClick={handleDestroy}>
-                    Reset
-                  </button>
-                </>
-              )}
-              {state.status === 'initializing' && (
-                <button className="btn-primary opacity-60 cursor-not-allowed" disabled>
-                  Initializing…
-                </button>
-              )}
-              {(state.status === 'error' || state.status === 'stopped') && (
-                <>
-                  <button className="btn-outline" onClick={handleStart}>
-                    Retry
-                  </button>
-                  <button className="px-6 py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={handleDestroy}>
-                    Reset
-                  </button>
-                </>
-              )}
-              {error && <p className="text-sm text-destructive">{error}</p>}
-
-              {/* Debug overlay toggle */}
-              {state.status === 'tracking' && (
-                <button
-                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${showDebugOverlay ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-muted text-muted-foreground hover:text-foreground border border-transparent'}`}
+                  className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                    showDebugOverlay
+                      ? 'bg-primary/20 text-primary border border-primary/30'
+                      : 'bg-muted text-muted-foreground hover:text-foreground border border-transparent'
+                  }`}
                   onClick={() => setShowDebugOverlay(prev => !prev)}
+                  disabled={state.status !== 'tracking'}
+                  title={state.status === 'tracking' ? 'Toggle tracking debug overlay' : 'Start tracking to enable debug overlay'}
                 >
                   🔍 Debug
                 </button>
-              )}
+              </div>
+              <div className="relative flex-1 bg-muted">
+                <video
+                  ref={videoRef}
+                  id="webcam-video"
+                  className="absolute inset-0 w-full h-full object-contain"
+                  autoPlay
+                  playsInline
+                  muted
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+                <WebcamOverlay
+                  landmarks={latestLandmarks}
+                  blendShapes={latestBlendShapes}
+                  layers={overlayLayers}
+                  className="w-full h-full"
+                />
+              </div>
             </div>
+
+            {/* Drag handle */}
+            <div
+              className="hidden lg:flex w-1 cursor-col-resize bg-border hover:bg-primary/30 active:bg-primary/50 transition-colors items-center justify-center"
+              onMouseDown={handleMouseDown}
+            >
+              <div className="w-0.5 h-8 rounded-full bg-muted-foreground/30" />
+            </div>
+
+            {/* Right panel: avatar canvas */}
+            <div className="flex flex-1 flex-col items-center justify-center bg-muted">
+              <canvas
+                ref={canvasRef}
+                id="avatar-canvas"
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Controls footer */}
+        {activeTab === 'studio' && (
+          <div className="flex items-center justify-center gap-3 border-t border-border px-6 py-3">
+            {state.status === 'idle' && (
+              <button
+                className={avatarUrl ? 'btn-primary' : 'btn-primary opacity-40 cursor-not-allowed'}
+                onClick={handleStart}
+                disabled={!avatarUrl}
+              >
+                {avatarUrl ? 'Start Tracking' : 'Select an Avatar →'}
+              </button>
+            )}
+            {state.status === 'tracking' && (
+              <>
+                <button className="bg-destructive/10 text-destructive hover:bg-destructive/20 px-6 py-2.5 rounded-md font-medium text-sm transition-colors" onClick={handleStop}>
+                  Stop
+                </button>
+                <button className="btn-outline" onClick={handleDestroy}>
+                  Reset
+                </button>
+              </>
+            )}
+            {state.status === 'initializing' && (
+              <button className="btn-primary opacity-60 cursor-not-allowed" disabled>
+                Initializing…
+              </button>
+            )}
+            {(state.status === 'error' || state.status === 'stopped') && (
+              <>
+                <button className="btn-outline" onClick={handleStart}>
+                  Retry
+                </button>
+                <button className="px-6 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={handleDestroy}>
+                  Reset
+                </button>
+              </>
+            )}
+            {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         )}
 
