@@ -38,6 +38,12 @@ export interface UseWebatarReturn {
   latestBlendShapes: Record<string, number>
   latestHeadRotation: { x: number; y: number; z: number }
   latestLandmarks: ReadonlyArray<{ x: number; y: number; z: number }>
+  /** Show 3D debug markers in the scene (camera, hip, look-at) */
+  setDebugScene: (enabled: boolean) => void
+  /** Smoothed camera distance (for debug overlay) */
+  smoothedCameraDistance: React.MutableRefObject<number | null>
+  /** Smoothed hip position (for debug overlay) */
+  smoothedHipPosition: React.MutableRefObject<{ x: number; y: number } | null>
 }
 
 /** Smoothing factor for pose bones — now via tuningConfig.poseSmoothing */
@@ -296,6 +302,14 @@ export function useWebatar(
             vrm.scene.position.y = baseY
           }
         }
+
+        // Update debug markers in 3D scene
+        if (loaderRef.current?.debugScene) {
+          loaderRef.current.updateDebugScene({
+            cameraDistance: smoothedCameraDistance.current,
+            hipPosition: smoothedHipPosition.current,
+          })
+        }
       })
 
       // 7. Start face tracking loop at ~30fps
@@ -462,6 +476,10 @@ export function useWebatar(
     loaderRef.current?.setTransparentBg(enabled)
   }, [])
 
+  const setDebugScene = useCallback((enabled: boolean) => {
+    loaderRef.current?.setDebugScene(enabled)
+  }, [])
+
   return {
     state: uiState,
     isReady,
@@ -470,9 +488,12 @@ export function useWebatar(
     stop,
     destroy,
     setTransparentBg,
+    setDebugScene,
     latestBlendShapes,
     latestHeadRotation,
     latestLandmarks,
+    smoothedCameraDistance,
+    smoothedHipPosition,
   }
 }
 

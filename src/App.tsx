@@ -87,7 +87,7 @@ export function App() {
 
   const avatarUrl = selectedAvatar?.model_file_url ?? null
 
-  const { state, error, start, stop, destroy, setTransparentBg, latestBlendShapes, latestLandmarks } = useWebatar(
+  const { state, error, start, stop, destroy, setTransparentBg, setDebugScene, latestBlendShapes, latestLandmarks } = useWebatar(
     canvasRef,
     videoRef,
     avatarUrl ?? undefined,
@@ -304,13 +304,29 @@ export function App() {
                 <p className="text-caption uppercase tracking-widest text-muted-foreground">
                   Avatar
                 </p>
-                <button
-                  className="px-2 py-0.5 text-xs rounded bg-muted text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border"
-                  onClick={() => setViewMode(viewMode === 'studio' ? 'performance' : 'studio')}
-                  title="Performance mode: fullscreen avatar with transparent background for OBS capture"
-                >
-                  🎬 Performance
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    className={`px-2 py-0.5 text-xs rounded transition-colors ${
+                      tuningConfig.showDebugScene
+                        ? 'bg-primary/20 text-primary border border-primary/30'
+                        : 'bg-muted text-muted-foreground hover:text-foreground border border-transparent'
+                    }`}
+                    onClick={() => {
+                      tuningConfig.showDebugScene = !tuningConfig.showDebugScene
+                      setDebugScene(tuningConfig.showDebugScene)
+                    }}
+                    title="Show 3D debug markers: camera position, hip center, look-at target"
+                  >
+                    🎯 Scene
+                  </button>
+                  <button
+                    className="px-2 py-0.5 text-xs rounded bg-muted text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border"
+                    onClick={() => setViewMode(viewMode === 'studio' ? 'performance' : 'studio')}
+                    title="Performance mode: fullscreen avatar with transparent background for OBS capture"
+                  >
+                    🎬 Performance
+                  </button>
+                </div>
               </div>
               <div className="flex-1 bg-muted">
                 <canvas

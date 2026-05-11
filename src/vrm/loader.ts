@@ -10,6 +10,8 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRM } from '@pixiv/three-vrm'
+import { addDebugMarkers, removeDebugMarkers, updateDebugMarkers } from '../rendering/debug-markers'
+import type { DebugTrackingData } from '../rendering/debug-markers'
 
 export interface VRMLoaderState {
   isLoaded: boolean
@@ -28,6 +30,8 @@ export class VRMLoader {
   public currentVRM: VRM | null = null
   /** Whether the background is transparent (for OBS capture) */
   public transparentBg = false
+  /** Whether 3D debug markers are visible in the scene */
+  public debugScene = false
   private animationFrameId: number | null = null
   private isRendering = false
   private listeners: Set<StateListener> = new Set()
@@ -141,6 +145,29 @@ export class VRMLoader {
     if (this.scene) {
       this.scene.background = enabled ? null : new THREE.Color(0x0a0a0e)
     }
+  }
+
+  /**
+   * Toggle 3D debug markers in the scene.
+   * Shows camera position, hip center, and look-at target.
+   */
+  setDebugScene(enabled: boolean): void {
+    this.debugScene = enabled
+    if (this.scene) {
+      if (enabled) {
+        addDebugMarkers(this.scene)
+      } else {
+        removeDebugMarkers(this.scene)
+      }
+    }
+  }
+
+  /**
+   * Update debug marker positions from tracking data.
+   * Called in the afterUpdate callback.
+   */
+  updateDebugScene(data: DebugTrackingData): void {
+    updateDebugMarkers(data)
   }
 
   /**

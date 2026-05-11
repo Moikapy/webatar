@@ -64,6 +64,10 @@ export interface TuningConfig {
   /** Z-depth influence scale (0=ignore z, 1=full z influence) */
   cameraDepthScale: number
 
+  // ─── Debug Scene ──────────────────────────────────────────────────
+  /** Show 3D debug markers in the scene (face position, hip center, camera) */
+  showDebugScene: boolean
+
   // ─── Overlay ──────────────────────────────────────────────────────
   /** Show debug overlay (landmarks + blend shapes on webcam) */
   showOverlay: boolean
@@ -102,6 +106,9 @@ export const DEFAULT_TUNING: TuningConfig = {
   cameraMaxDistance: 6.0,
   cameraReferenceArea: 0.08,
   cameraDepthScale: 5.0,
+
+  // Debug scene
+  showDebugScene: false,
 
   // Overlay
   showOverlay: false,
@@ -149,5 +156,6 @@ export const TUNING = {
   cameraMaxDistance: ${tuningConfig.cameraMaxDistance},
   cameraReferenceArea: ${tuningConfig.cameraReferenceArea},
   cameraDepthScale: ${tuningConfig.cameraDepthScale},
+  showDebugScene: ${tuningConfig.showDebugScene},
 } as const`
 }
