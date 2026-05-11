@@ -102,9 +102,9 @@ export const HARDWARE_PROFILES = {
   /** High-end profile (development machine: Ryzen 2600 + RTX 2070 + C930e) */
   high: {
     webcamResolution: { width: 640, height: 480 },
-    webcamFps: 30,
-    faceTrackingFps: 30,
-    poseTrackingFps: 15,
+    webcamFps: 60,
+    faceTrackingFps: 60,
+    poseTrackingFps: 30,
     renderFps: 60,
     enablePoseTracking: true,
     enableHandTracking: false,
