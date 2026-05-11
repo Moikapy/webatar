@@ -18,6 +18,7 @@ import { tuningConfig } from './tracking/tuning-config'
 import type { Avatar } from './osa/types'
 import { Badge } from './components/ui/badge'
 import { Separator } from './components/ui/separator'
+import { useTheme } from './theme'
 
 const STORAGE_KEY = 'webatar-selected-avatar'
 
@@ -56,13 +57,16 @@ const STATUS_LABELS: Record<string, { label: string; dot: string }> = {
 }
 
 type TabValue = 'studio' | 'avatars' | 'settings'
+type ViewMode = 'studio' | 'performance'
 
 export function App() {
+  const { theme, toggleTheme } = useTheme()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [activeTab, setActiveTab] = useState<TabValue>('studio')
   const [showDebugOverlay, setShowDebugOverlay] = useState(false)
   const [showTuningPanel, setShowTuningPanel] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('studio')
   const [splitRatio, setSplitRatio] = useState(50) // percentage for left panel
   const isDragging = useRef(false)
 
@@ -205,6 +209,15 @@ export function App() {
               })}
             </div>
 
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="ml-2 p-1.5 text-small text-muted-foreground hover:text-foreground transition-colors"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+
             {selectedAvatar && (
               <div className="flex items-center gap-2 text-small text-muted-foreground">
                 <span>🎭 {selectedAvatar.name}</span>
@@ -289,9 +302,63 @@ export function App() {
           </div>
         )}
 
+        {/* Performance View — fullscreen avatar, transparent background for OBS */}
+        {activeTab === 'studio' && viewMode === 'performance' && (
+          <div className="relative flex-1">
+            <canvas
+              ref={canvasRef}
+              id="avatar-canvas"
+              className="w-full h-full"
+            />
+            {/* Minimal overlay — top right */}
+            <div className="absolute top-2 right-2 flex gap-2">
+              <button
+                className="px-3 py-1.5 text-xs rounded bg-background/80 text-foreground hover:bg-background transition-colors border border-border/50"
+                onClick={() => setViewMode('studio')}
+                title="Return to Studio mode"
+              >
+                ✕ Studio
+              </button>
+            </div>
+            {/* Controls — bottom center */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {state.status === 'idle' && (
+                <button
+                  className={avatarUrl ? 'btn-primary' : 'btn-primary opacity-40 cursor-not-allowed'}
+                  onClick={handleStart}
+                  disabled={!avatarUrl}
+                >
+                  Start Tracking
+                </button>
+              )}
+              {state.status === 'tracking' && (
+                <button
+                  className="bg-destructive/80 text-white hover:bg-destructive px-4 py-2 rounded-md text-sm transition-colors"
+                  onClick={handleStop}
+                >
+                  Stop
+                </button>
+              )}
+              {state.status === 'initializing' && (
+                <button className="btn-primary opacity-60 cursor-not-allowed" disabled>
+                  Initializing…
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Controls footer */}
         {activeTab === 'studio' && (
           <div className="flex items-center justify-center gap-3 border-t border-border px-6 py-3">
+            {/* Performance mode toggle */}
+            <button
+              className={viewMode === 'performance' ? 'px-3 py-1.5 text-xs rounded bg-primary/20 text-primary border border-primary/30' : 'px-3 py-1.5 text-xs rounded bg-muted text-muted-foreground hover:text-foreground border border-transparent'}
+              onClick={() => setViewMode(viewMode === 'studio' ? 'performance' : 'studio')}
+              title="Performance mode: fullscreen avatar with transparent background for OBS capture"
+            >
+              🎬 Performance
+            </button>
             {state.status === 'idle' && (
               <button
                 className={avatarUrl ? 'btn-primary' : 'btn-primary opacity-40 cursor-not-allowed'}
