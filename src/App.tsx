@@ -9,10 +9,12 @@
  *   - Debug overlay shows landmarks and blend shapes on the webcam feed
  */
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import { useWebatar } from './hooks/useWebatar'
 import { AvatarGallery } from './components/AvatarGallery'
 import { WebcamOverlay } from './components/WebcamOverlay'
+import { TuningPanel } from './components/TuningPanel'
+import { tuningConfig } from './tracking/tuning-config'
 import type { Avatar } from './osa/types'
 import { Badge } from './components/ui/badge'
 import { Separator } from './components/ui/separator'
@@ -60,6 +62,7 @@ export function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [activeTab, setActiveTab] = useState<TabValue>('studio')
   const [showDebugOverlay, setShowDebugOverlay] = useState(false)
+  const [showTuningPanel, setShowTuningPanel] = useState(false)
   const [splitRatio, setSplitRatio] = useState(50) // percentage for left panel
   const isDragging = useRef(false)
 
@@ -130,6 +133,21 @@ export function App() {
   const overlayLayers = showDebugOverlay
     ? { video: true, landmarks: true, blendShapes: true }
     : { video: false, landmarks: false, blendShapes: false }
+
+  // Sync tuning config overlay/debug flags from state (one-way binding)
+  tuningConfig.showOverlay = showDebugOverlay
+
+  // Keyboard shortcut: Ctrl+D to toggle tuning panel
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 'd') {
+        e.preventDefault()
+        setShowTuningPanel(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
@@ -429,6 +447,8 @@ export function App() {
           </div>
         </div>
       </footer>
+      {/* Tuning Panel — Ctrl+D to toggle */}
+      {showTuningPanel && <TuningPanel />}
     </div>
   )
 }

@@ -21,7 +21,8 @@ import { VRMLoader } from '../vrm/loader'
 import { applyIdlePose } from '../vrm/idle-pose'
 import { rotateVRMBone } from '../vrm/bones'
 import { solvePoseBones } from '../tracking/pose-solver'
-import { computeCameraDistance, smoothCameraDistance, DEFAULT_CAMERA_CONFIG } from '../tracking/camera-distance'
+import { computeCameraDistance, smoothCameraDistance } from '../tracking/camera-distance'
+import { tuningConfig } from '../tracking/tuning-config'
 import { requestCameraPermission, stopStream } from '../utils/permissions'
 import type { WebatarState } from '../engine/WebatarEngine'
 import type { BoneRotations } from '../tracking/pose-solver'
@@ -38,10 +39,8 @@ export interface UseWebatarReturn {
   latestLandmarks: ReadonlyArray<{ x: number; y: number; z: number }>
 }
 
-/** Smoothing factor for pose bone rotations (0=instant, 1=frozen) */
-const POSE_SMOOTHING = 0.4
-/** Smoothing factor for camera distance (aggressive smoothing to prevent jitter) */
-const CAMERA_DISTANCE_SMOOTHING = 0.15
+/** Smoothing factor for pose bones — now via tuningConfig.poseSmoothing */
+/** Smoothing factor for camera distance — now via tuningConfig.cameraDistanceSmoothing */
 /** Pose tracking interval in ms (~15fps) */
 const POSE_INTERVAL_MS = 66
 
@@ -224,14 +223,14 @@ export function useWebatar(
         const head = engine.currentHeadRotation
         if (head) {
           rotateVRMBone(h, 'head', {
-            x: head.x * 0.7,
-            y: head.y * 0.7,
-            z: head.z * 0.7,
+            x: head.x * tuningConfig.headScale,
+            y: head.y * tuningConfig.headScale,
+            z: head.z * tuningConfig.headScale,
           })
           rotateVRMBone(h, 'neck', {
-            x: head.x * 0.15,
-            y: head.y * 0.15,
-            z: head.z * 0.15,
+            x: head.x * tuningConfig.neckScale,
+            y: head.y * tuningConfig.neckScale,
+            z: head.z * tuningConfig.neckScale,
           })
         }
 
@@ -239,14 +238,31 @@ export function useWebatar(
         const pose = lastPoseBones.current
         if (pose) {
           // Spine: blend with idle (override if tracking data is strong)
-          rotateVRMBone(h, 'spine', pose.spine)
-          // Shoulders
-          rotateVRMBone(h, 'leftShoulder', pose.leftShoulder)
-          rotateVRMBone(h, 'rightShoulder', pose.rightShoulder)
-          // Upper arms
-          rotateVRMBone(h, 'leftUpperArm', pose.leftUpperArm)
-          rotateVRMBone(h, 'rightUpperArm', pose.rightUpperArm)
-          // Lower arms
+          rotateVRMBone(h, 'spine', {
+            x: pose.spine.x * tuningConfig.spineScale,
+            y: pose.spine.y * tuningConfig.spineScale,
+            z: pose.spine.z * tuningConfig.spineScale,
+          })
+          rotateVRMBone(h, 'leftShoulder', {
+            x: pose.leftShoulder.x * tuningConfig.shoulderScale,
+            y: pose.leftShoulder.y * tuningConfig.shoulderScale,
+            z: pose.leftShoulder.z * tuningConfig.shoulderScale,
+          })
+          rotateVRMBone(h, 'rightShoulder', {
+            x: pose.rightShoulder.x * tuningConfig.shoulderScale,
+            y: pose.rightShoulder.y * tuningConfig.shoulderScale,
+            z: pose.rightShoulder.z * tuningConfig.shoulderScale,
+          })
+          rotateVRMBone(h, 'leftUpperArm', {
+            x: pose.leftUpperArm.x * tuningConfig.upperArmScale,
+            y: pose.leftUpperArm.y * tuningConfig.upperArmScale,
+            z: pose.leftUpperArm.z * tuningConfig.upperArmScale,
+          })
+          rotateVRMBone(h, 'rightUpperArm', {
+            x: pose.rightUpperArm.x * tuningConfig.upperArmScale,
+            y: pose.rightUpperArm.y * tuningConfig.upperArmScale,
+            z: pose.rightUpperArm.z * tuningConfig.upperArmScale,
+          })
           rotateVRMBone(h, 'leftLowerArm', pose.leftLowerArm)
           rotateVRMBone(h, 'rightLowerArm', pose.rightLowerArm)
         }
@@ -281,11 +297,15 @@ export function useWebatar(
           setLatestLandmarks(results.landmarks)
 
           // Update camera distance from face landmarks
-          const rawDistance = computeCameraDistance(results.landmarks, DEFAULT_CAMERA_CONFIG)
+          const rawDistance = computeCameraDistance(results.landmarks, {
+            defaultDistance: tuningConfig.cameraDefaultDistance,
+            minDistance: tuningConfig.cameraMinDistance,
+            maxDistance: tuningConfig.cameraMaxDistance,
+          })
           smoothedCameraDistance.current = smoothCameraDistance(
             smoothedCameraDistance.current,
             rawDistance,
-            CAMERA_DISTANCE_SMOOTHING,
+            tuningConfig.cameraDistanceSmoothing,
           )
 
           trackingFrameCount++
@@ -318,7 +338,7 @@ export function useWebatar(
           if (poseBones) {
             // Smooth pose with previous frame
             if (lastPoseBones.current) {
-              lastPoseBones.current = smoothPoseBones(lastPoseBones.current, poseBones, POSE_SMOOTHING)
+              lastPoseBones.current = smoothPoseBones(lastPoseBones.current, poseBones, tuningConfig.poseSmoothing)
             } else {
               lastPoseBones.current = poseBones
             }
