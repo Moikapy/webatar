@@ -110,21 +110,11 @@ export class PoseTracker {
       return emptyResult
     }
 
-    const landmarks = results.landmarks[0].map((lm: { x: number; y: number; z: number; visibility?: number }) => ({
-      x: lm.x,
-      y: lm.y,
-      z: lm.z,
-      visibility: lm.visibility,
-    }))
+    const landmarks = results.landmarks[0] as Array<{ x: number; y: number; z: number; visibility?: number }>
 
-    const worldLandmarks = (results.worldLandmarks?.[0] ?? results.landmarks[0]).map(
-      (lm: { x: number; y: number; z: number; visibility?: number }) => ({
-        x: lm.x,
-        y: lm.y,
-        z: lm.z,
-        visibility: lm.visibility,
-      })
-    )
+    // Use world landmarks if available, fall back to normalized
+    // Cast directly to avoid 33+ object allocations per frame
+    const worldLandmarks = (results.worldLandmarks?.[0] ?? results.landmarks[0]) as Array<{ x: number; y: number; z: number; visibility?: number }>
 
     const result: PoseTrackingResult = {
       landmarks,

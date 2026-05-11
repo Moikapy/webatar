@@ -123,12 +123,9 @@ export class FaceTracker {
     const result: FaceTrackingResult = {
       blendShapes,
       headRotation,
-      landmarks: landmarks.map((lm: { x: number; y: number; z: number; visibility?: number }) => ({
-        x: lm.x,
-        y: lm.y,
-        z: lm.z,
-        visibility: lm.visibility,
-      })),
+      // Pass landmarks directly from MediaPipe to avoid 478 object allocations per frame.
+      // The calling code accesses .x, .y, .z, .visibility which exist on the raw objects.
+      landmarks: landmarks as Array<{ x: number; y: number; z: number; visibility?: number }>,
       faceDetected: true,
       timestamp,
     }

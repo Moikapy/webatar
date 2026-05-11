@@ -142,11 +142,6 @@ export function filterNoise(
 export function computeVRMExpressions(
   blendShapes: Readonly<Record<string, number>>,
 ): Record<string, number> {
-  console.assert(
-    typeof blendShapes === 'object' && blendShapes !== null,
-    'blendShapes must be an object',
-  )
-
   const vrm: Record<string, number> = {}
 
   // Step 1: Direct 1:1 mappings with accumulation
