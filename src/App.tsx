@@ -10,7 +10,7 @@
 import { useRef, useState, useCallback } from 'react'
 import { useWebatar } from './hooks/useWebatar'
 import { AvatarGallery } from './components/AvatarGallery'
-import { WebcamOverlay, type OverlayLayers } from './components/WebcamOverlay'
+import { WebcamOverlay } from './components/WebcamOverlay'
 import type { Avatar } from './osa/types'
 import { Badge } from './components/ui/badge'
 import { Separator } from './components/ui/separator'
@@ -58,11 +58,7 @@ export function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [activeTab, setActiveTab] = useState<TabValue>('studio')
 
-  const [overlayLayers, setOverlayLayers] = useState<OverlayLayers>({
-    video: false,
-    landmarks: false,
-    blendShapes: false,
-  })
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false)
 
   // Restore last-selected avatar from localStorage
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(() => {
@@ -184,7 +180,7 @@ export function App() {
           <div className="flex flex-1 flex-col">
             <div className="flex flex-1 flex-col lg:flex-row">
               {/* Camera panel — hidden when overlay video is active (avoid duplicate) */}
-              <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border ${overlayLayers.video ? 'hidden lg:hidden' : ''}`}>
+              <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border ${showDebugOverlay ? 'hidden' : ''}`}>
                 <div className="p-4">
                   <p className="text-caption uppercase tracking-widest text-muted-foreground mb-3">
                     Camera
@@ -213,7 +209,7 @@ export function App() {
                     videoRef={videoRef}
                     landmarks={latestLandmarks}
                     blendShapes={latestBlendShapes}
-                    layers={overlayLayers}
+                    layers={showDebugOverlay ? { video: true, landmarks: true, blendShapes: true } : { video: false, landmarks: false, blendShapes: false }}
                     className="aspect-square w-full rounded-lg"
                   />
                 </div>
@@ -258,30 +254,14 @@ export function App() {
               )}
               {error && <p className="text-sm text-destructive">{error}</p>}
 
-              {/* Debug overlay toggles — video is the master switch */}
+              {/* Debug overlay toggle */}
               {state.status === 'tracking' && (
-                <div className="flex items-center gap-1 ml-4">
-                  <button
-                    className={`px-2 py-1 text-xs rounded transition-colors ${overlayLayers.video ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => setOverlayLayers(prev => ({ ...prev, video: !prev.video }))}
-                  >
-                    🎥 Video
-                  </button>
-                  <button
-                    className={`px-2 py-1 text-xs rounded transition-colors ${overlayLayers.landmarks && overlayLayers.video ? 'bg-primary/20 text-primary' : !overlayLayers.video ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => overlayLayers.video && setOverlayLayers(prev => ({ ...prev, landmarks: !prev.landmarks }))}
-                    disabled={!overlayLayers.video}
-                  >
-                    📍 Landmarks
-                  </button>
-                  <button
-                    className={`px-2 py-1 text-xs rounded transition-colors ${overlayLayers.blendShapes && overlayLayers.video ? 'bg-primary/20 text-primary' : !overlayLayers.video ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => overlayLayers.video && setOverlayLayers(prev => ({ ...prev, blendShapes: !prev.blendShapes }))}
-                    disabled={!overlayLayers.video}
-                  >
-                    🏷️ Shapes
-                  </button>
-                </div>
+                <button
+                  className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${showDebugOverlay ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-muted text-muted-foreground hover:text-foreground border border-transparent'}`}
+                  onClick={() => setShowDebugOverlay(prev => !prev)}
+                >
+                  🔍 Debug
+                </button>
               )}
             </div>
           </div>
