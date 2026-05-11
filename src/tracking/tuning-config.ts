@@ -92,10 +92,10 @@ export const DEFAULT_TUNING: TuningConfig = {
   headSmoothing: 0.5,
 
   // Body pose
-  poseSmoothing: 0.4,
-  spineScale: 0.3,
-  shoulderScale: 1.0,
-  upperArmScale: 1.0,
+  poseSmoothing: 0.15,
+  spineScale: 0.2,
+  shoulderScale: 0.4,
+  upperArmScale: 0.6,
 
   // Face tracking camera
   faceTrackScale: 1.0,
