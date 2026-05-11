@@ -144,7 +144,18 @@ export function useWebatar(
       })
       streamRef.current = stream
       video.srcObject = stream
-      await video.play()
+      try {
+        await video.play()
+      } catch (playErr) {
+        // "play() was interrupted by a new load request" is harmless
+        // — the video is still ready, just the promise was aborted
+        if (!video.paused) {
+          // Video is actually playing, the error is just a race
+          console.warn('[useWebatar] video.play() interrupted (harmless):', playErr)
+        } else {
+          throw playErr
+        }
+      }
 
       // 2. Create FaceTracker
       const tracker = new FaceTracker()
