@@ -16,6 +16,8 @@ import { useRef, useState, useCallback, useEffect } from 'react'
 import { FaceTracker } from '../tracking/face-tracker'
 import { WebatarEngine } from '../engine/WebatarEngine'
 import { VRMLoader } from '../vrm/loader'
+import { applyIdlePose } from '../vrm/idle-pose'
+import { rotateVRMBone } from '../vrm/bones'
 import { requestCameraPermission, stopStream } from '../utils/permissions'
 import type { WebatarState } from '../engine/WebatarEngine'
 
@@ -26,6 +28,9 @@ export interface UseWebatarReturn {
   start: () => Promise<void>
   stop: () => void
   destroy: () => void
+  latestBlendShapes: Record<string, number>
+  latestHeadRotation: { x: number; y: number; z: number }
+  latestLandmarks: ReadonlyArray<{ x: number; y: number; z: number }>
 }
 
 export function useWebatar(
@@ -43,6 +48,11 @@ export function useWebatar(
   })
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Tracking data for overlay (updated per frame)
+  const [latestBlendShapes, setLatestBlendShapes] = useState<Record<string, number>>({})
+  const [latestHeadRotation, setLatestHeadRotation] = useState({ x: 0, y: 0, z: 0 })
+  const [latestLandmarks, setLatestLandmarks] = useState<ReadonlyArray<{ x: number; y: number; z: number }>>([])
 
   // Mutable refs for engine instances (don't trigger re-renders)
   const trackerRef = useRef<FaceTracker | null>(null)
@@ -121,7 +131,8 @@ export function useWebatar(
         canvas,
         video,
         enablePoseTracking: true,
-        smoothingFactor: 0.35,
+        expressionSmoothing: 0.6,
+        headSmoothing: 0.5,
       })
       engineRef.current = engine
       await engine.init()
@@ -156,7 +167,35 @@ export function useWebatar(
 
       setIsReady(true)
 
-      // 5. Start tracking loop at ~30fps
+      // 5. Register afterUpdate callback for bone rotations
+      //    VRM.update() normalizes bones to rest pose each frame,
+      //    so we must re-apply idle pose + head rotation AFTER it.
+      loader.onAfterUpdate(() => {
+        const h = engine.currentHumanoid
+        if (!h) return
+
+        // Re-apply idle pose (arms, hands, spine)
+        applyIdlePose(h)
+
+        // Re-apply latest head rotation on top
+        // Scale down tracking values to reduce sensitivity:
+        //   head: 0.7x (less twitchy), neck: 0.15x (subtle follow)
+        const head = engine.currentHeadRotation
+        if (head) {
+          rotateVRMBone(h, 'head', {
+            x: head.x * 0.7,
+            y: head.y * 0.7,
+            z: head.z * 0.7,
+          })
+          rotateVRMBone(h, 'neck', {
+            x: head.x * 0.15,
+            y: head.y * 0.15,
+            z: head.z * 0.15,
+          })
+        }
+      })
+
+      // 6. Start tracking loop at ~30fps
       isRunningRef.current = true
       let trackingFrameCount = 0
       intervalRef.current = setInterval(() => {
@@ -168,6 +207,10 @@ export function useWebatar(
         if (results) {
           engine.processFaceFrame(results.blendShapes)
           engine.processHeadRotation(results.headRotation)
+          // Update overlay data
+          setLatestBlendShapes(results.blendShapes)
+          setLatestHeadRotation(results.headRotation)
+          setLatestLandmarks(results.landmarks)
           trackingFrameCount++
           if (trackingFrameCount === 1) {
             console.log('[useWebatar] First tracking frame received', {
@@ -178,6 +221,9 @@ export function useWebatar(
           }
         } else {
           engine.processFaceLost()
+          // Clear overlay data when face is lost
+          setLatestBlendShapes({})
+          setLatestLandmarks([])
         }
         engine.updateFps()
       }, 33) // ~30fps
@@ -216,6 +262,9 @@ export function useWebatar(
     cleanup()
     setIsReady(false)
     setError(null)
+    setLatestBlendShapes({})
+    setLatestHeadRotation({ x: 0, y: 0, z: 0 })
+    setLatestLandmarks([])
     setUiState({
       status: 'idle',
       currentAvatarId: null,
@@ -233,5 +282,8 @@ export function useWebatar(
     start,
     stop,
     destroy,
+    latestBlendShapes,
+    latestHeadRotation,
+    latestLandmarks,
   }
 }
