@@ -93,7 +93,7 @@ export const DEFAULT_TUNING: TuningConfig = {
 
   // Body pose
   poseSmoothing: 0.4,
-  spineScale: 1.0,
+  spineScale: 0.3,
   shoulderScale: 1.0,
   upperArmScale: 1.0,
 
