@@ -36,13 +36,19 @@ export interface TuningConfig {
   /** Upper arm rotation scale (0–2, 1=1:1) */
   upperArmScale: number
 
+  // ─── Face Tracking Camera ──────────────────────────────────────────
+  /** How much the camera follows the face (0=off, 1=1:1 tracking). Default 1.0 */
+  faceTrackScale: number
+  /** Smoothing for face tracking camera pan (0=frozen, 1=instant). Default 0.12 */
+  faceTrackSmoothing: number
+
   // ─── Model Position ─────────────────────────────────────────────
   /** Vertical offset to lower/raise the avatar (meters, negative = lower) */
   modelYOffset: number
-  /** Horizontal position mapping scale (0=off, 1=1:1 with your movement) */
-  hipPositionScaleX: number
-  /** Vertical position mapping scale (0=off, 1=1:1 with your movement) */
-  hipPositionScaleY: number
+  /** Hip position X scale (0=off, 1=1:1 tracking from pose) */
+  hipScaleX: number
+  /** Hip position Y scale (0=off, 1=1:1 tracking) */
+  hipScaleY: number
   /** Hip position smoothing (0=frozen, 1=instant) */
   hipPositionSmoothing: number
 
@@ -91,10 +97,14 @@ export const DEFAULT_TUNING: TuningConfig = {
   shoulderScale: 1.0,
   upperArmScale: 1.0,
 
+  // Face tracking camera
+  faceTrackScale: 1.0,
+  faceTrackSmoothing: 0.12,
+
   // Model position
   modelYOffset: -0.1,
-  hipPositionScaleX: -0.5,
-  hipPositionScaleY: -0.8,
+  hipScaleX: 1.0,
+  hipScaleY: 1.0,
   hipPositionSmoothing: 0.2,
 
   // Camera
@@ -144,9 +154,11 @@ export const TUNING = {
   spineScale: ${tuningConfig.spineScale},
   shoulderScale: ${tuningConfig.shoulderScale},
   upperArmScale: ${tuningConfig.upperArmScale},
+  faceTrackScale: ${tuningConfig.faceTrackScale},
+  faceTrackSmoothing: ${tuningConfig.faceTrackSmoothing},
   modelYOffset: ${tuningConfig.modelYOffset},
-  hipPositionScaleX: ${tuningConfig.hipPositionScaleX},
-  hipPositionScaleY: ${tuningConfig.hipPositionScaleY},
+  hipScaleX: ${tuningConfig.hipScaleX},
+  hipScaleY: ${tuningConfig.hipScaleY},
   hipPositionSmoothing: ${tuningConfig.hipPositionSmoothing},
   cameraY: ${tuningConfig.cameraY},
   cameraLookAtY: ${tuningConfig.cameraLookAtY},

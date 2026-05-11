@@ -101,6 +101,7 @@ export function setVisible(visible: boolean): void {
 export interface DebugTrackingData {
   cameraDistance: number | null
   hipPosition: { x: number; y: number } | null
+  faceOffset: { offsetX: number; offsetY: number } | null
 }
 
 export function updateDebugMarkers(data: DebugTrackingData): void {
@@ -108,7 +109,9 @@ export function updateDebugMarkers(data: DebugTrackingData): void {
 
   // Camera position indicator (magenta sphere)
   const camDist = data.cameraDistance ?? tuningConfig.cameraDefaultDistance
-  markers.cameraDot.position.set(0, tuningConfig.cameraY, camDist)
+  const faceOffsetX = data.faceOffset?.offsetX ?? 0
+  const faceOffsetY = data.faceOffset?.offsetY ?? 0
+  markers.cameraDot.position.set(faceOffsetX, tuningConfig.cameraY + faceOffsetY, camDist)
 
   // Hip center (cyan sphere)
   const hipPos = data.hipPosition

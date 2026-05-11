@@ -22,6 +22,7 @@ import { applyIdlePose } from '../vrm/idle-pose'
 import { rotateVRMBone } from '../vrm/bones'
 import { solvePoseBones } from '../tracking/pose-solver'
 import { computeCameraDistance, smoothCameraDistance } from '../tracking/camera-distance'
+import { computeFacePositionOffset, computeHipPositionOffset } from '../tracking/auto-calibrate'
 import { tuningConfig } from '../tracking/tuning-config'
 import { requestCameraPermission, stopStream } from '../utils/permissions'
 import type { WebatarState } from '../engine/WebatarEngine'
@@ -42,6 +43,8 @@ export interface UseWebatarReturn {
   setDebugScene: (enabled: boolean) => void
   /** Smoothed camera distance (for debug overlay) */
   smoothedCameraDistance: React.MutableRefObject<number | null>
+  /** Smoothed face position offset (for debug overlay) */
+  smoothedFaceOffset: React.MutableRefObject<{ offsetX: number; offsetY: number } | null>
   /** Smoothed hip position (for debug overlay) */
   smoothedHipPosition: React.MutableRefObject<{ x: number; y: number } | null>
 }
@@ -87,6 +90,7 @@ export function useWebatar(
   const lastPoseBones = useRef<BoneRotations | null>(null)
   const smoothedCameraDistance = useRef<number | null>(null)
   const smoothedHipPosition = useRef<{ x: number; y: number } | null>(null)
+  const smoothedFaceOffset = useRef<{ offsetX: number; offsetY: number } | null>(null)
 
   // ─── Cleanup ──────────────────────────────────────────────────────────
 
@@ -275,29 +279,35 @@ export function useWebatar(
           rotateVRMBone(h, 'rightLowerArm', pose.rightLowerArm)
         }
 
-        // Update camera distance and model position
+        // Auto-calibrated camera: follows face position
+        // The camera pans to keep the avatar's head aligned with where
+        // the user's face is on the webcam. No manual tuning needed.
         const camDist = smoothedCameraDistance.current
-        const hipPos = smoothedHipPosition.current
+        const faceOffset = smoothedFaceOffset.current
+        const camera = loaderRef.current?.camera
 
-        // Apply camera distance
-        if (camDist !== null) {
-          const camera = loaderRef.current?.camera
-          if (camera) {
-            camera.position.set(0, tuningConfig.cameraY, camDist)
-            camera.lookAt(0, tuningConfig.cameraLookAtY, 0)
-          }
+        if (camDist !== null && camera) {
+          // Camera position: center + face tracking pan offset
+          const offsetX = faceOffset?.offsetX ?? 0
+          const offsetY = faceOffset?.offsetY ?? 0
+          camera.position.set(
+            offsetX,
+            tuningConfig.cameraY + offsetY,
+            camDist,
+          )
+          // Look at avatar center, subtly tracking face direction
+          camera.lookAt(offsetX * 0.3, tuningConfig.cameraLookAtY + offsetY * 0.3, 0)
         }
 
         // Apply model position (hip tracking + Y offset)
         const vrm = loaderRef.current?.currentVRM
         if (vrm) {
           const baseY = tuningConfig.modelYOffset
+          const hipPos = smoothedHipPosition.current
           if (hipPos) {
-            // Hip position from pose tracking
             vrm.scene.position.x = hipPos.x
             vrm.scene.position.y = baseY + hipPos.y
           } else {
-            // No pose tracking — just Y offset
             vrm.scene.position.x = 0
             vrm.scene.position.y = baseY
           }
@@ -308,6 +318,7 @@ export function useWebatar(
           loaderRef.current.updateDebugScene({
             cameraDistance: smoothedCameraDistance.current,
             hipPosition: smoothedHipPosition.current,
+            faceOffset: smoothedFaceOffset.current,
           })
         }
       })
@@ -341,6 +352,28 @@ export function useWebatar(
             rawDistance,
             tuningConfig.cameraDistanceSmoothing,
           )
+
+          // Auto-calibrate: face position → camera pan
+          // Nose tip position determines where the camera should look
+          // so the avatar's head appears at the same screen position as the user's face
+          const faceOffset = computeFacePositionOffset(
+            results.landmarks,
+            smoothedCameraDistance.current ?? tuningConfig.cameraDefaultDistance,
+            undefined, // use default FOV (40°)
+            undefined, // use default aspect ratio (16:9)
+            tuningConfig.faceTrackScale,
+          )
+          if (faceOffset) {
+            const smoothing = tuningConfig.faceTrackSmoothing
+            if (smoothedFaceOffset.current) {
+              smoothedFaceOffset.current = {
+                offsetX: smoothedFaceOffset.current.offsetX + (faceOffset.offsetX - smoothedFaceOffset.current.offsetX) * smoothing,
+                offsetY: smoothedFaceOffset.current.offsetY + (faceOffset.offsetY - smoothedFaceOffset.current.offsetY) * smoothing,
+              }
+            } else {
+              smoothedFaceOffset.current = faceOffset
+            }
+          }
 
           trackingFrameCount++
           if (trackingFrameCount === 1) {
@@ -378,29 +411,25 @@ export function useWebatar(
             }
           }
 
-          // Extract hip center position for 1:1 body mapping
-          // Landmarks 23=leftHip, 24=rightHip in world coords (meters from camera)
+          // Auto-calibrate hip position from pose landmarks
+          // Uses computeHipPositionOffset for 1:1 mapping
           const worldLandmarks = poseResult.worldLandmarks
           if (worldLandmarks && worldLandmarks.length >= 25) {
-            const leftHip = worldLandmarks[23]
-            const rightHip = worldLandmarks[24]
-            // Hip center in 3D space
-            const hipCenterX = (leftHip.x + rightHip.x) / 2
-            const hipCenterY = (leftHip.y + rightHip.y) / 2
-
-            // Map to scene coords (mirror X, invert Y, scale by tuning factors)
-            const targetX = hipCenterX * tuningConfig.hipPositionScaleX
-            const targetY = hipCenterY * tuningConfig.hipPositionScaleY
-
-            // Smooth the position
-            const smoothFactor = tuningConfig.hipPositionSmoothing
-            if (smoothedHipPosition.current) {
-              smoothedHipPosition.current = {
-                x: smoothedHipPosition.current.x + (targetX - smoothedHipPosition.current.x) * smoothFactor,
-                y: smoothedHipPosition.current.y + (targetY - smoothedHipPosition.current.y) * smoothFactor,
+            const hipOffset = computeHipPositionOffset(worldLandmarks, {
+              baseY: tuningConfig.modelYOffset,
+              scaleX: tuningConfig.hipScaleX,
+              scaleY: tuningConfig.hipScaleY,
+            })
+            if (hipOffset) {
+              const smoothFactor = tuningConfig.hipPositionSmoothing
+              if (smoothedHipPosition.current) {
+                smoothedHipPosition.current = {
+                  x: smoothedHipPosition.current.x + (hipOffset.x - smoothedHipPosition.current.x) * smoothFactor,
+                  y: smoothedHipPosition.current.y + (hipOffset.y - smoothedHipPosition.current.y) * smoothFactor,
+                }
+              } else {
+                smoothedHipPosition.current = hipOffset
               }
-            } else {
-              smoothedHipPosition.current = { x: targetX, y: targetY }
             }
           }
         } else {
@@ -493,6 +522,7 @@ export function useWebatar(
     latestHeadRotation,
     latestLandmarks,
     smoothedCameraDistance,
+    smoothedFaceOffset,
     smoothedHipPosition,
   }
 }

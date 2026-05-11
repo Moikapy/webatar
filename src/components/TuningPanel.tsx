@@ -78,8 +78,8 @@ export function TuningPanel() {
       <div className="mb-3">
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Model Position</p>
         <Slider label="Y Offset" value={tuningConfig.modelYOffset} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.modelYOffset = v; refresh() }} />
-        <Slider label="Hip Scale X" value={tuningConfig.hipPositionScaleX} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.hipPositionScaleX = v; refresh() }} />
-        <Slider label="Hip Scale Y" value={tuningConfig.hipPositionScaleY} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.hipPositionScaleY = v; refresh() }} />
+        <Slider label="Hip Scale X" value={tuningConfig.hipScaleX} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.hipScaleX = v; refresh() }} />
+        <Slider label="Hip Scale Y" value={tuningConfig.hipScaleY} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.hipScaleY = v; refresh() }} />
         <Slider label="Hip Smooth" value={tuningConfig.hipPositionSmoothing} min={0} max={1} step={0.01} onChange={(v) => { tuningConfig.hipPositionSmoothing = v; refresh() }} />
       </div>
 
@@ -106,6 +106,13 @@ export function TuningPanel() {
         <Slider label="Upper Arm" value={tuningConfig.upperArmScale} min={0} max={2} step={0.1} onChange={(v) => { tuningConfig.upperArmScale = v; refresh() }} />
       </div>
 
+      {/* Face Tracking Camera */}
+      <div className="mb-3">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Face Tracking</p>
+        <Slider label="Track Scale" value={tuningConfig.faceTrackScale} min={0} max={2} step={0.05} onChange={(v) => { tuningConfig.faceTrackScale = v; refresh() }} />
+        <Slider label="Track Smooth" value={tuningConfig.faceTrackSmoothing} min={0} max={1} step={0.01} onChange={(v) => { tuningConfig.faceTrackSmoothing = v; refresh() }} />
+      </div>
+
       {/* Camera */}
       <div className="mb-3">
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Camera</p>
@@ -123,8 +130,8 @@ export function TuningPanel() {
       <div className="rounded bg-muted/50 p-2 font-mono text-[10px] text-muted-foreground">
         <p>model.pos: <span id="tuning-model-pos">—</span></p>
         <p>hip.pos: <span id="tuning-hip-pos">—</span></p>
+        <p>face.offset: <span id="tuning-face-offset">—</span></p>
         <p>cam.dist: <span id="tuning-cam-dist">—</span></p>
-        <p>face: <span id="tuning-face">—</span></p>
       </div>
     </div>
   )
