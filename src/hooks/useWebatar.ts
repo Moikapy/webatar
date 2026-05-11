@@ -6,7 +6,7 @@
  *   - MediaPipe FaceTracker + PoseTracker initialization
  *   - Three.js VRMLoader (scene + renderer)
  *   - VRM model loading
- *   - Animation loop (face tracking @ 60fps, pose @ 30fps, rendering @ 60fps)
+ *   - Animation loop (face tracking @ 30fps, pose @ 15fps, rendering @ 60fps)
  *   - Expression + head rotation + pose bone application to VRM
  *   - Camera distance from face size (avatar moves closer/further)
  *
@@ -51,8 +51,8 @@ export interface UseWebatarReturn {
 
 /** Smoothing factor for pose bones — now via tuningConfig.poseSmoothing */
 /** Smoothing factor for camera distance — now via tuningConfig.cameraDistanceSmoothing */
-/** Pose tracking interval in ms (~30fps) */
-const POSE_INTERVAL_MS = 33
+/** Pose tracking interval in ms (~15fps) */
+const POSE_INTERVAL_MS = 66
 
 export function useWebatar(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
@@ -323,7 +323,7 @@ export function useWebatar(
         }
       })
 
-      // 7. Start face tracking loop at ~60fps
+      // 7. Start face tracking loop at ~30fps
       isRunningRef.current = true
       let trackingFrameCount = 0
       intervalRef.current = setInterval(() => {
@@ -389,9 +389,9 @@ export function useWebatar(
           setLatestLandmarks([])
         }
         engine.updateFps()
-      }, 16) // ~60fps
+      }, 33) // ~30fps
 
-      // 8. Start pose tracking loop at ~30fps
+      // 8. Start pose tracking loop at ~15fps
       poseIntervalRef.current = setInterval(() => {
         if (!isRunningRef.current) return
         if (!video.readyState || video.paused) return
@@ -446,7 +446,7 @@ export function useWebatar(
             }
           }
         }
-      }, POSE_INTERVAL_MS) // ~30fps
+      }, POSE_INTERVAL_MS) // ~15fps
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to start'
       setError(msg)
