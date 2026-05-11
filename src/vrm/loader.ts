@@ -23,12 +23,13 @@ export class VRMLoader {
   private canvas: HTMLCanvasElement
   private renderer: THREE.WebGLRenderer
   private scene: THREE.Scene
-  private camera: THREE.PerspectiveCamera
+  camera: THREE.PerspectiveCamera
   private clock: THREE.Clock
   private currentVRM: VRM | null = null
   private animationFrameId: number | null = null
   private isRendering = false
   private listeners: Set<StateListener> = new Set()
+  private afterUpdateCallbacks: Set<() => void> = new Set()
   private _state: VRMLoaderState = {
     isLoaded: false,
     isRendering: false,
@@ -117,6 +118,15 @@ export class VRMLoader {
       this.currentVRM = null
     }
     this.updateState({ isLoaded: false, modelUrl: null })
+  }
+
+  /**
+   * Register a callback to run AFTER vrm.update() but BEFORE render.
+   * Use this for bone rotations that VRM's normalization would overwrite.
+   */
+  onAfterUpdate(callback: () => void): () => void {
+    this.afterUpdateCallbacks.add(callback)
+    return () => this.afterUpdateCallbacks.delete(callback)
   }
 
   /**
@@ -229,9 +239,16 @@ export class VRMLoader {
 
     const delta = this.clock.getDelta()
 
-    // Update VRM
+    // Update VRM (normalizes bones to rest pose)
     if (this.currentVRM) {
       this.currentVRM.update(delta)
+    }
+
+    // Apply bone rotations AFTER VRM normalization, BEFORE render.
+    // This is where idle pose, head tracking, and body tracking
+    // bone rotations go — anything VRM.update() would overwrite.
+    for (const cb of this.afterUpdateCallbacks) {
+      cb()
     }
 
     // Render

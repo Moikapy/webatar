@@ -3,23 +3,28 @@
  *
  * Manages:
  *   - Camera permission + stream
- *   - MediaPipe FaceTracker initialization
+ *   - MediaPipe FaceTracker + PoseTracker initialization
  *   - Three.js VRMLoader (scene + renderer)
  *   - VRM model loading
- *   - Animation loop (face tracking @ 30fps + rendering @ 60fps)
- *   - Expression + head rotation application to VRM
+ *   - Animation loop (face tracking @ 30fps, pose @ 15fps, rendering @ 60fps)
+ *   - Expression + head rotation + pose bone application to VRM
+ *   - Camera distance from face size (avatar moves closer/further)
  *
  * All browser-only code. Unit tested via Playwright integration tests.
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { FaceTracker } from '../tracking/face-tracker'
+import { PoseTracker } from '../tracking/pose-tracker'
 import { WebatarEngine } from '../engine/WebatarEngine'
 import { VRMLoader } from '../vrm/loader'
 import { applyIdlePose } from '../vrm/idle-pose'
 import { rotateVRMBone } from '../vrm/bones'
+import { solvePoseBones } from '../tracking/pose-solver'
+import { computeCameraDistance, smoothCameraDistance, DEFAULT_CAMERA_CONFIG } from '../tracking/camera-distance'
 import { requestCameraPermission, stopStream } from '../utils/permissions'
 import type { WebatarState } from '../engine/WebatarEngine'
+import type { BoneRotations } from '../tracking/pose-solver'
 
 export interface UseWebatarReturn {
   state: WebatarState
@@ -32,6 +37,13 @@ export interface UseWebatarReturn {
   latestHeadRotation: { x: number; y: number; z: number }
   latestLandmarks: ReadonlyArray<{ x: number; y: number; z: number }>
 }
+
+/** Smoothing factor for pose bone rotations (0=instant, 1=frozen) */
+const POSE_SMOOTHING = 0.4
+/** Smoothing factor for camera distance (aggressive smoothing to prevent jitter) */
+const CAMERA_DISTANCE_SMOOTHING = 0.15
+/** Pose tracking interval in ms (~15fps) */
+const POSE_INTERVAL_MS = 66
 
 export function useWebatar(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
@@ -56,12 +68,18 @@ export function useWebatar(
 
   // Mutable refs for engine instances (don't trigger re-renders)
   const trackerRef = useRef<FaceTracker | null>(null)
+  const poseTrackerRef = useRef<PoseTracker | null>(null)
   const engineRef = useRef<WebatarEngine | null>(null)
   const loaderRef = useRef<VRMLoader | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const poseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isRunningRef = useRef(false)
+
+  // Smoothed pose and camera distance (mutable refs for performance)
+  const lastPoseBones = useRef<BoneRotations | null>(null)
+  const smoothedCameraDistance = useRef<number | null>(null)
 
   // ─── Cleanup ──────────────────────────────────────────────────────────
 
@@ -76,6 +94,10 @@ export function useWebatar(
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+    if (poseIntervalRef.current !== null) {
+      clearInterval(poseIntervalRef.current)
+      poseIntervalRef.current = null
+    }
     if (streamRef.current) {
       stopStream(streamRef.current)
       streamRef.current = null
@@ -87,6 +109,10 @@ export function useWebatar(
     if (trackerRef.current) {
       trackerRef.current.destroy()
       trackerRef.current = null
+    }
+    if (poseTrackerRef.current) {
+      poseTrackerRef.current.destroy()
+      poseTrackerRef.current = null
     }
     if (engineRef.current) {
       engineRef.current.destroy()
@@ -124,9 +150,15 @@ export function useWebatar(
       const tracker = new FaceTracker()
       trackerRef.current = tracker
       await tracker.init()
-      tracker.startTracking() // ready → tracking, or processFrame returns null
+      tracker.startTracking()
 
-      // 3. Create WebatarEngine
+      // 3. Create PoseTracker (runs at 15fps, separate from face tracking)
+      const poseTracker = new PoseTracker()
+      poseTrackerRef.current = poseTracker
+      await poseTracker.init()
+      poseTracker.startTracking()
+
+      // 4. Create WebatarEngine
       const engine = new WebatarEngine({
         canvas,
         video,
@@ -142,7 +174,7 @@ export function useWebatar(
         setUiState({ ...state })
       })
 
-      // 4. Create VRMLoader and load VRM (if URL provided)
+      // 5. Create VRMLoader and load VRM (if URL provided)
       if (!vrmUrl) {
         setError('No avatar selected. Pick one from the gallery.')
         cleanup()
@@ -167,9 +199,9 @@ export function useWebatar(
 
       setIsReady(true)
 
-      // 5. Register afterUpdate callback for bone rotations
+      // 6. Register afterUpdate callback for bone rotations
       //    VRM.update() normalizes bones to rest pose each frame,
-      //    so we must re-apply idle pose + head rotation AFTER it.
+      //    so we must re-apply idle pose + head rotation + pose bones AFTER it.
       loader.onAfterUpdate(() => {
         const h = engine.currentHumanoid
         if (!h) return
@@ -178,8 +210,6 @@ export function useWebatar(
         applyIdlePose(h)
 
         // Re-apply latest head rotation on top
-        // Scale down tracking values to reduce sensitivity:
-        //   head: 0.7x (less twitchy), neck: 0.15x (subtle follow)
         const head = engine.currentHeadRotation
         if (head) {
           rotateVRMBone(h, 'head', {
@@ -193,9 +223,35 @@ export function useWebatar(
             z: head.z * 0.15,
           })
         }
+
+        // Apply pose bone rotations on top of idle pose
+        const pose = lastPoseBones.current
+        if (pose) {
+          // Spine: blend with idle (override if tracking data is strong)
+          rotateVRMBone(h, 'spine', pose.spine)
+          // Shoulders
+          rotateVRMBone(h, 'leftShoulder', pose.leftShoulder)
+          rotateVRMBone(h, 'rightShoulder', pose.rightShoulder)
+          // Upper arms
+          rotateVRMBone(h, 'leftUpperArm', pose.leftUpperArm)
+          rotateVRMBone(h, 'rightUpperArm', pose.rightUpperArm)
+          // Lower arms
+          rotateVRMBone(h, 'leftLowerArm', pose.leftLowerArm)
+          rotateVRMBone(h, 'rightLowerArm', pose.rightLowerArm)
+        }
+
+        // Update camera distance based on face size
+        const camDist = smoothedCameraDistance.current
+        if (camDist !== null) {
+          const camera = loaderRef.current?.camera
+          if (camera) {
+            camera.position.set(0, 1.3, camDist)
+            camera.lookAt(0, 1.0, 0)
+          }
+        }
       })
 
-      // 6. Start tracking loop at ~30fps
+      // 7. Start face tracking loop at ~30fps
       isRunningRef.current = true
       let trackingFrameCount = 0
       intervalRef.current = setInterval(() => {
@@ -207,10 +263,20 @@ export function useWebatar(
         if (results) {
           engine.processFaceFrame(results.blendShapes)
           engine.processHeadRotation(results.headRotation)
+
           // Update overlay data
           setLatestBlendShapes(results.blendShapes)
           setLatestHeadRotation(results.headRotation)
           setLatestLandmarks(results.landmarks)
+
+          // Update camera distance from face landmarks
+          const rawDistance = computeCameraDistance(results.landmarks, DEFAULT_CAMERA_CONFIG)
+          smoothedCameraDistance.current = smoothCameraDistance(
+            smoothedCameraDistance.current,
+            rawDistance,
+            CAMERA_DISTANCE_SMOOTHING,
+          )
+
           trackingFrameCount++
           if (trackingFrameCount === 1) {
             console.log('[useWebatar] First tracking frame received', {
@@ -221,12 +287,36 @@ export function useWebatar(
           }
         } else {
           engine.processFaceLost()
-          // Clear overlay data when face is lost
           setLatestBlendShapes({})
           setLatestLandmarks([])
         }
         engine.updateFps()
       }, 33) // ~30fps
+
+      // 8. Start pose tracking loop at ~15fps
+      poseIntervalRef.current = setInterval(() => {
+        if (!isRunningRef.current) return
+        if (!video.readyState || video.paused) return
+        if (!poseTrackerRef.current) return
+
+        const now = performance.now()
+        const poseResult = poseTrackerRef.current.processFrame(video, now)
+
+        if (poseResult && poseResult.poseDetected && poseResult.landmarks.length >= 25) {
+          const poseBones = solvePoseBones(poseResult.landmarks, poseResult.worldLandmarks)
+          if (poseBones) {
+            // Smooth pose with previous frame
+            if (lastPoseBones.current) {
+              lastPoseBones.current = smoothPoseBones(lastPoseBones.current, poseBones, POSE_SMOOTHING)
+            } else {
+              lastPoseBones.current = poseBones
+            }
+          }
+        } else {
+          // No pose detected — decay toward idle
+          lastPoseBones.current = null
+        }
+      }, POSE_INTERVAL_MS) // ~15fps
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to start'
       setError(msg)
@@ -243,6 +333,10 @@ export function useWebatar(
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
+    if (poseIntervalRef.current !== null) {
+      clearInterval(poseIntervalRef.current)
+      poseIntervalRef.current = null
+    }
     if (streamRef.current) {
       stopStream(streamRef.current)
       streamRef.current = null
@@ -253,7 +347,9 @@ export function useWebatar(
     if (trackerRef.current) {
       trackerRef.current.stopTracking()
     }
-    // Keep the VRM loaded and renderer running for display
+    if (poseTrackerRef.current) {
+      poseTrackerRef.current.stopTracking()
+    }
   }, [])
 
   // ─── Destroy ──────────────────────────────────────────────────────────
@@ -285,5 +381,39 @@ export function useWebatar(
     latestBlendShapes,
     latestHeadRotation,
     latestLandmarks,
+  }
+}
+
+/**
+ * Smooth pose bone rotations using EMA.
+ * Each bone rotation component is interpolated independently.
+ */
+function smoothPoseBones(
+  prev: BoneRotations,
+  current: BoneRotations,
+  factor: number,
+): BoneRotations {
+  return {
+    head: lerpRotation(prev.head, current.head, factor),
+    neck: lerpRotation(prev.neck, current.neck, factor),
+    spine: lerpRotation(prev.spine, current.spine, factor),
+    leftShoulder: lerpRotation(prev.leftShoulder, current.leftShoulder, factor),
+    rightShoulder: lerpRotation(prev.rightShoulder, current.rightShoulder, factor),
+    leftUpperArm: lerpRotation(prev.leftUpperArm, current.leftUpperArm, factor),
+    rightUpperArm: lerpRotation(prev.rightUpperArm, current.rightUpperArm, factor),
+    leftLowerArm: lerpRotation(prev.leftLowerArm, current.leftLowerArm, factor),
+    rightLowerArm: lerpRotation(prev.rightLowerArm, current.rightLowerArm, factor),
+  }
+}
+
+function lerpRotation(
+  prev: { x: number; y: number; z: number },
+  current: { x: number; y: number; z: number },
+  factor: number,
+): { x: number; y: number; z: number } {
+  return {
+    x: prev.x + (current.x - prev.x) * factor,
+    y: prev.y + (current.y - prev.y) * factor,
+    z: prev.z + (current.z - prev.z) * factor,
   }
 }

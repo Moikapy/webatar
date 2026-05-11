@@ -2,3 +2,8 @@ export { computeVRMExpressions, computeCompositeExpressions, filterNoise, ARKIT_
 export { lerp, lerpVec3, smoothExpressions, BlinkStabilizer } from './smoothing'
 export { drawFaceLandmarks, drawBlendShapeLabels } from './overlay-render'
 export type { LandmarkStyle, LabelStyle } from './overlay-render'
+export { computeCameraDistance, smoothCameraDistance } from './camera-distance'
+export type { CameraDistanceConfig } from './camera-distance'
+export { DEFAULT_CAMERA_CONFIG } from './camera-distance'
+export { PoseTracker } from './pose-tracker'
+export type { PoseTrackerState, PoseTrackingResult } from './pose-tracker'
