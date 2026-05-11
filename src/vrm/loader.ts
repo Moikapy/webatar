@@ -26,6 +26,8 @@ export class VRMLoader {
   camera: THREE.PerspectiveCamera
   private clock: THREE.Clock
   public currentVRM: VRM | null = null
+  /** Whether the background is transparent (for OBS capture) */
+  public transparentBg = false
   private animationFrameId: number | null = null
   private isRendering = false
   private listeners: Set<StateListener> = new Set()
@@ -130,6 +132,18 @@ export class VRMLoader {
   }
 
   /**
+   * Toggle transparent background for OBS capture.
+   * When enabled, scene background is removed (alpha channel shows through).
+   * When disabled, restores the default dark background.
+   */
+  setTransparentBg(enabled: boolean): void {
+    this.transparentBg = enabled
+    if (this.scene) {
+      this.scene.background = enabled ? null : new THREE.Color(0x0a0a0e)
+    }
+  }
+
+  /**
    * Start the render loop.
    */
   startRenderLoop(): void {
@@ -168,7 +182,7 @@ export class VRMLoader {
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
-      alpha: false,
+      alpha: true, // Always enable alpha for transparent background support
     })
     renderer.setSize(canvas.clientWidth || 640, canvas.clientHeight || 480)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))

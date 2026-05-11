@@ -87,7 +87,7 @@ export function App() {
 
   const avatarUrl = selectedAvatar?.model_file_url ?? null
 
-  const { state, error, start, stop, destroy, latestBlendShapes, latestLandmarks } = useWebatar(
+  const { state, error, start, stop, destroy, setTransparentBg, latestBlendShapes, latestLandmarks } = useWebatar(
     canvasRef,
     videoRef,
     avatarUrl ?? undefined,
@@ -141,6 +141,11 @@ export function App() {
   // Sync tuning config overlay/debug flags from state (one-way binding)
   tuningConfig.showOverlay = showDebugOverlay
 
+  // Toggle transparent background when switching to/from performance mode
+  useEffect(() => {
+    setTransparentBg(viewMode === 'performance')
+  }, [viewMode, setTransparentBg])
+
   // Keyboard shortcut: Ctrl+D to toggle tuning panel
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -155,7 +160,8 @@ export function App() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
-      {/* ─── Header ─── */}
+      {/* Header hidden in performance mode */}
+      {viewMode === 'studio' && (
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
         <nav className="container-custom">
           <div className="flex h-14 items-center justify-between">
@@ -229,13 +235,14 @@ export function App() {
           </div>
         </nav>
       </header>
+      )}
 
-      <Separator />
+      {viewMode === 'studio' && <Separator />}
 
       {/* ─── Main content ─── */}
       <main className="flex flex-1 flex-col pt-14">
         {/* Studio View — 50/50 split: webcam+debug | avatar */}
-        {activeTab === 'studio' && (
+        {activeTab === 'studio' && viewMode === 'studio' && (
           <div
             className="flex flex-1 flex-col lg:flex-row"
             onMouseMove={handleMouseMove}
@@ -292,12 +299,26 @@ export function App() {
             </div>
 
             {/* Right panel: avatar canvas */}
-            <div className="flex flex-1 flex-col items-center justify-center bg-muted">
-              <canvas
-                ref={canvasRef}
-                id="avatar-canvas"
-                className="w-full h-full"
-              />
+            <div className="flex flex-1 flex-col">
+              <div className="flex items-center justify-between px-3 py-1 border-b border-border">
+                <p className="text-caption uppercase tracking-widest text-muted-foreground">
+                  Avatar
+                </p>
+                <button
+                  className="px-2 py-0.5 text-xs rounded bg-muted text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border"
+                  onClick={() => setViewMode(viewMode === 'studio' ? 'performance' : 'studio')}
+                  title="Performance mode: fullscreen avatar with transparent background for OBS capture"
+                >
+                  🎬 Performance
+                </button>
+              </div>
+              <div className="flex-1 bg-muted">
+                <canvas
+                  ref={canvasRef}
+                  id="avatar-canvas"
+                  className="w-full h-full"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -348,17 +369,9 @@ export function App() {
           </div>
         )}
 
-        {/* Controls footer */}
-        {activeTab === 'studio' && (
+        {/* Controls footer — studio mode only */}
+        {activeTab === 'studio' && viewMode === 'studio' && (
           <div className="flex items-center justify-center gap-3 border-t border-border px-6 py-3">
-            {/* Performance mode toggle */}
-            <button
-              className={viewMode === 'performance' ? 'px-3 py-1.5 text-xs rounded bg-primary/20 text-primary border border-primary/30' : 'px-3 py-1.5 text-xs rounded bg-muted text-muted-foreground hover:text-foreground border border-transparent'}
-              onClick={() => setViewMode(viewMode === 'studio' ? 'performance' : 'studio')}
-              title="Performance mode: fullscreen avatar with transparent background for OBS capture"
-            >
-              🎬 Performance
-            </button>
             {state.status === 'idle' && (
               <button
                 className={avatarUrl ? 'btn-primary' : 'btn-primary opacity-40 cursor-not-allowed'}

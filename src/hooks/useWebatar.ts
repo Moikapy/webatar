@@ -34,6 +34,7 @@ export interface UseWebatarReturn {
   start: () => Promise<void>
   stop: () => void
   destroy: () => void
+  setTransparentBg: (enabled: boolean) => void
   latestBlendShapes: Record<string, number>
   latestHeadRotation: { x: number; y: number; z: number }
   latestLandmarks: ReadonlyArray<{ x: number; y: number; z: number }>
@@ -457,6 +458,10 @@ export function useWebatar(
     })
   }, [cleanup])
 
+  const setTransparentBg = useCallback((enabled: boolean) => {
+    loaderRef.current?.setTransparentBg(enabled)
+  }, [])
+
   return {
     state: uiState,
     isReady,
@@ -464,6 +469,7 @@ export function useWebatar(
     start,
     stop,
     destroy,
+    setTransparentBg,
     latestBlendShapes,
     latestHeadRotation,
     latestLandmarks,
