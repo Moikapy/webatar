@@ -16,11 +16,14 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { FaceTracker } from '../tracking/face-tracker'
 import { PoseTracker } from '../tracking/pose-tracker'
+import { HandTracker } from '../tracking/hand-tracker'
 import { WebatarEngine } from '../engine/WebatarEngine'
 import { VRMLoader } from '../vrm/loader'
 import { applyIdlePose } from '../vrm/idle-pose'
 import { rotateVRMBone } from '../vrm/bones'
 import { solvePoseBones } from '../tracking/pose-solver'
+import { solveHands, ZERO_FINGER } from '../tracking/hand-solver'
+import type { HandRotations } from '../tracking/hand-solver'
 import { computeCameraDistance, smoothCameraDistance } from '../tracking/camera-distance'
 import { computeFacePositionOffset, computeHipPositionOffset } from '../tracking/auto-calibrate'
 import { tuningConfig } from '../tracking/tuning-config'
@@ -53,6 +56,8 @@ export interface UseWebatarReturn {
 /** Smoothing factor for camera distance — now via tuningConfig.cameraDistanceSmoothing */
 /** Pose tracking interval in ms (~15fps) */
 const POSE_INTERVAL_MS = 66
+/** Hand tracking interval in ms (~15fps) */
+const HAND_INTERVAL_MS = 66
 
 export function useWebatar(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
@@ -78,12 +83,14 @@ export function useWebatar(
   // Mutable refs for engine instances (don't trigger re-renders)
   const trackerRef = useRef<FaceTracker | null>(null)
   const poseTrackerRef = useRef<PoseTracker | null>(null)
+  const handTrackerRef = useRef<HandTracker | null>(null)
   const engineRef = useRef<WebatarEngine | null>(null)
   const loaderRef = useRef<VRMLoader | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const poseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const handIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isRunningRef = useRef(false)
 
   // Smoothed pose, camera distance, and hip position (mutable refs for performance)
@@ -91,6 +98,7 @@ export function useWebatar(
   const smoothedCameraDistance = useRef<number | null>(null)
   const smoothedHipPosition = useRef<{ x: number; y: number } | null>(null)
   const smoothedFaceOffset = useRef<{ offsetX: number; offsetY: number } | null>(null)
+  const lastHandRotations = useRef<HandRotations | null>(null)
 
   // ─── Cleanup ──────────────────────────────────────────────────────────
 
@@ -107,6 +115,11 @@ export function useWebatar(
     }
     if (poseIntervalRef.current !== null) {
       clearInterval(poseIntervalRef.current)
+    poseIntervalRef.current = null
+    }
+    if (handIntervalRef.current !== null) {
+      clearInterval(handIntervalRef.current)
+      handIntervalRef.current = null
       poseIntervalRef.current = null
     }
     if (streamRef.current) {
@@ -124,6 +137,10 @@ export function useWebatar(
     if (poseTrackerRef.current) {
       poseTrackerRef.current.destroy()
       poseTrackerRef.current = null
+    }
+    if (handTrackerRef.current) {
+      handTrackerRef.current.destroy()
+      handTrackerRef.current = null
     }
     if (engineRef.current) {
       engineRef.current.destroy()
@@ -180,7 +197,13 @@ export function useWebatar(
       await poseTracker.init()
       poseTracker.startTracking()
 
-      // 4. Create WebatarEngine
+      // 4. Create HandTracker (runs at 15fps for finger tracking)
+      const handTracker = new HandTracker()
+      handTrackerRef.current = handTracker
+      await handTracker.init()
+      handTracker.startTracking()
+
+      // 5. Create WebatarEngine
       const engine = new WebatarEngine({
         canvas,
         video,
@@ -277,6 +300,43 @@ export function useWebatar(
           })
           rotateVRMBone(h, 'leftLowerArm', pose.leftLowerArm)
           rotateVRMBone(h, 'rightLowerArm', pose.rightLowerArm)
+        }
+
+        // Apply finger rotations from hand tracking
+        const hands = lastHandRotations.current
+        if (hands) {
+          // Left hand fingers
+          rotateVRMBone(h, 'leftThumbProximal', hands.left.thumbProximal)
+          rotateVRMBone(h, 'leftThumbIntermediate', hands.left.thumbIntermediate)
+          rotateVRMBone(h, 'leftThumbDistal', hands.left.thumbDistal)
+          rotateVRMBone(h, 'leftIndexProximal', hands.left.indexProximal)
+          rotateVRMBone(h, 'leftIndexIntermediate', hands.left.indexIntermediate)
+          rotateVRMBone(h, 'leftIndexDistal', hands.left.indexDistal)
+          rotateVRMBone(h, 'leftMiddleProximal', hands.left.middleProximal)
+          rotateVRMBone(h, 'leftMiddleIntermediate', hands.left.middleIntermediate)
+          rotateVRMBone(h, 'leftMiddleDistal', hands.left.middleDistal)
+          rotateVRMBone(h, 'leftRingProximal', hands.left.ringProximal)
+          rotateVRMBone(h, 'leftRingIntermediate', hands.left.ringIntermediate)
+          rotateVRMBone(h, 'leftRingDistal', hands.left.ringDistal)
+          rotateVRMBone(h, 'leftLittleProximal', hands.left.littleProximal)
+          rotateVRMBone(h, 'leftLittleIntermediate', hands.left.littleIntermediate)
+          rotateVRMBone(h, 'leftLittleDistal', hands.left.littleDistal)
+          // Right hand fingers
+          rotateVRMBone(h, 'rightThumbProximal', hands.right.thumbProximal)
+          rotateVRMBone(h, 'rightThumbIntermediate', hands.right.thumbIntermediate)
+          rotateVRMBone(h, 'rightThumbDistal', hands.right.thumbDistal)
+          rotateVRMBone(h, 'rightIndexProximal', hands.right.indexProximal)
+          rotateVRMBone(h, 'rightIndexIntermediate', hands.right.indexIntermediate)
+          rotateVRMBone(h, 'rightIndexDistal', hands.right.indexDistal)
+          rotateVRMBone(h, 'rightMiddleProximal', hands.right.middleProximal)
+          rotateVRMBone(h, 'rightMiddleIntermediate', hands.right.middleIntermediate)
+          rotateVRMBone(h, 'rightMiddleDistal', hands.right.middleDistal)
+          rotateVRMBone(h, 'rightRingProximal', hands.right.ringProximal)
+          rotateVRMBone(h, 'rightRingIntermediate', hands.right.ringIntermediate)
+          rotateVRMBone(h, 'rightRingDistal', hands.right.ringDistal)
+          rotateVRMBone(h, 'rightLittleProximal', hands.right.littleProximal)
+          rotateVRMBone(h, 'rightLittleIntermediate', hands.right.littleIntermediate)
+          rotateVRMBone(h, 'rightLittleDistal', hands.right.littleDistal)
         }
 
         // Auto-calibrated camera: follows face position
@@ -447,6 +507,42 @@ export function useWebatar(
           }
         }
       }, POSE_INTERVAL_MS) // ~15fps
+
+      // 9. Start hand tracking loop at ~15fps
+      handIntervalRef.current = setInterval(() => {
+        if (!isRunningRef.current) return
+        if (!video.readyState || video.paused) return
+        if (!handTrackerRef.current) return
+
+        const now = performance.now()
+        const handResult = handTrackerRef.current.processFrame(video, now)
+
+        if (handResult && handResult.handsDetected > 0 && handResult.landmarks.length > 0) {
+          const handRotations = solveHands(handResult.landmarks, handResult.handedness)
+
+          // Smooth hand rotations
+          if (lastHandRotations.current) {
+            lastHandRotations.current = {
+              left: smoothFingerRotations(lastHandRotations.current.left, handRotations.left, tuningConfig.poseSmoothing),
+              right: smoothFingerRotations(lastHandRotations.current.right, handRotations.right, tuningConfig.poseSmoothing),
+            }
+          } else {
+            lastHandRotations.current = handRotations
+          }
+        } else {
+          // Decay hand rotations toward zero
+          if (lastHandRotations.current) {
+            lastHandRotations.current = {
+              left: smoothFingerRotations(lastHandRotations.current.left, ZERO_FINGER, 0.1),
+              right: smoothFingerRotations(lastHandRotations.current.right, ZERO_FINGER, 0.1),
+            }
+            // Check if fully decayed
+            if (isZeroFingers(lastHandRotations.current.left) && isZeroFingers(lastHandRotations.current.right)) {
+              lastHandRotations.current = null
+            }
+          }
+        }
+      }, HAND_INTERVAL_MS) // ~15fps
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to start'
       setError(msg)
@@ -465,6 +561,11 @@ export function useWebatar(
     }
     if (poseIntervalRef.current !== null) {
       clearInterval(poseIntervalRef.current)
+    poseIntervalRef.current = null
+    }
+    if (handIntervalRef.current !== null) {
+      clearInterval(handIntervalRef.current)
+      handIntervalRef.current = null
       poseIntervalRef.current = null
     }
     if (streamRef.current) {
@@ -479,6 +580,9 @@ export function useWebatar(
     }
     if (poseTrackerRef.current) {
       poseTrackerRef.current.stopTracking()
+    }
+    if (handTrackerRef.current) {
+      handTrackerRef.current.stopTracking()
     }
   }, [])
 
@@ -559,4 +663,45 @@ function lerpRotation(
     y: prev.y + (current.y - prev.y) * factor,
     z: prev.z + (current.z - prev.z) * factor,
   }
+}
+/**
+ * Smooth finger rotations using per-component EMA.
+ * Reuses the same pattern as smoothPoseBones.
+ */
+function smoothFingerRotations(
+  prev: import('../tracking/hand-solver').FingerRotations,
+  current: import('../tracking/hand-solver').FingerRotations,
+  factor: number,
+): import('../tracking/hand-solver').FingerRotations {
+  return {
+    thumbProximal: lerpRotation(prev.thumbProximal, current.thumbProximal, factor),
+    thumbIntermediate: lerpRotation(prev.thumbIntermediate, current.thumbIntermediate, factor),
+    thumbDistal: lerpRotation(prev.thumbDistal, current.thumbDistal, factor),
+    indexProximal: lerpRotation(prev.indexProximal, current.indexProximal, factor),
+    indexIntermediate: lerpRotation(prev.indexIntermediate, current.indexIntermediate, factor),
+    indexDistal: lerpRotation(prev.indexDistal, current.indexDistal, factor),
+    middleProximal: lerpRotation(prev.middleProximal, current.middleProximal, factor),
+    middleIntermediate: lerpRotation(prev.middleIntermediate, current.middleIntermediate, factor),
+    middleDistal: lerpRotation(prev.middleDistal, current.middleDistal, factor),
+    ringProximal: lerpRotation(prev.ringProximal, current.ringProximal, factor),
+    ringIntermediate: lerpRotation(prev.ringIntermediate, current.ringIntermediate, factor),
+    ringDistal: lerpRotation(prev.ringDistal, current.ringDistal, factor),
+    littleProximal: lerpRotation(prev.littleProximal, current.littleProximal, factor),
+    littleIntermediate: lerpRotation(prev.littleIntermediate, current.littleIntermediate, factor),
+    littleDistal: lerpRotation(prev.littleDistal, current.littleDistal, factor),
+  }
+}
+
+/**
+ * Check if finger rotations have decayed to near-zero.
+ */
+function isZeroFingers(f: import('../tracking/hand-solver').FingerRotations): boolean {
+  const threshold = 0.01
+  return (
+    Math.abs(f.thumbProximal.x) < threshold &&
+    Math.abs(f.indexProximal.x) < threshold &&
+    Math.abs(f.middleProximal.x) < threshold &&
+    Math.abs(f.ringProximal.x) < threshold &&
+    Math.abs(f.littleProximal.x) < threshold
+  )
 }

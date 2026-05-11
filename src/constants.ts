@@ -73,6 +73,8 @@ export const MEDIAPIPE_CONFIG = {
   FACE_MIN_PRESENCE_CONFIDENCE: 0.5,
   POSE_MODEL:
     'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task',
+  HAND_MODEL:
+    'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task',
 } as const
 
 /** Overlay rendering constants */
