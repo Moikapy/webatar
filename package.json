@@ -12,7 +12,10 @@
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "lint": "echo 'lint not configured yet'"
+    "lint": "echo 'lint not configured yet'",
+    "design:lint": "npx @google/design.md lint DESIGN.md",
+    "design:diff": "npx @google/design.md diff DESIGN.md",
+    "design:export": "npx @google/design.md export --format css-tailwind DESIGN.md > src/theme-tokens.css"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

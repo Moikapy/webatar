@@ -25,7 +25,7 @@ export class VRMLoader {
   private scene: THREE.Scene
   camera: THREE.PerspectiveCamera
   private clock: THREE.Clock
-  private currentVRM: VRM | null = null
+  public currentVRM: VRM | null = null
   private animationFrameId: number | null = null
   private isRendering = false
   private listeners: Set<StateListener> = new Set()

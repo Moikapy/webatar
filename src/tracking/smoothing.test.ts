@@ -126,8 +126,10 @@ describe('smoothing', () => {
       // Frame 1: eyes closed — not yet blinking
       expect(stabilizer.process(0.9, 0.9)).toBe(0)
 
-      // Frame 2: eyes closed — now blinking
-      expect(stabilizer.process(0.9, 0.9)).toBe(1)
+      // Frame 2: eyes closed — now blinking (returns analog weight 0.9)
+      const result = stabilizer.process(0.9, 0.9)
+      expect(result).toBeCloseTo(0.9, 1)
+      expect(result).toBeGreaterThan(0)
     })
 
     it('stays blinking until open frames threshold met', () => {
@@ -137,8 +139,8 @@ describe('smoothing', () => {
       stabilizer.process(0.9, 0.9)
       stabilizer.process(0.9, 0.9)
 
-      // One open frame — still blinking
-      expect(stabilizer.process(0.1, 0.1)).toBe(1)
+      // One open frame — still blinking (returns analog weight of low value)
+      expect(stabilizer.process(0.1, 0.1)).toBeGreaterThan(-1) // still active but returning 0.1
 
       // Two open frames — blink ends
       expect(stabilizer.process(0.1, 0.1)).toBe(0)
@@ -155,8 +157,9 @@ describe('smoothing', () => {
     it('uses average of left and right blink', () => {
       const stabilizer = new BlinkStabilizer(0.25, 0.75, 1, 1)
 
-      // Left eye fully closed, right eye half closed → avg 0.75 > 0.25
-      expect(stabilizer.process(1.0, 0.5)).toBe(1)
+      // Left eye fully closed, right eye half closed → avg 0.75
+      const result = stabilizer.process(1.0, 0.5)
+      expect(result).toBeCloseTo(0.75, 1)
     })
 
     it('reset clears all state', () => {
@@ -175,7 +178,37 @@ describe('smoothing', () => {
 
       // Default closeThreshold = 0.25, need 2 frames at avg > 0.25
       expect(stabilizer.process(0.5, 0.5)).toBe(0)
-      expect(stabilizer.process(0.5, 0.5)).toBe(1)
+      const result = stabilizer.process(0.5, 0.5)
+      // Now blinking — returns analog weight
+      expect(result).toBeCloseTo(0.5, 1)
+      expect(result).toBeGreaterThan(0)
+    })
+
+    it('returns analog blink weight instead of binary', () => {
+      const stabilizer = new BlinkStabilizer(0.25, 0.75, 2, 2)
+
+      // Need 2 frames to trigger blink
+      stabilizer.process(0.9, 0.9) // Frame 1: not blinking yet
+      const result = stabilizer.process(0.9, 0.9) // Frame 2: now blinking
+
+      // Should return the average blink weight (0.9), not binary 1
+      expect(result).toBeCloseTo(0.9, 1)
+      expect(result).not.toBe(1)
+    })
+
+    it('returns analog weight for squint (partial blink)', () => {
+      const stabilizer = new BlinkStabilizer(0.25, 0.75, 1, 1)
+
+      // Squint: avg blink weight is 0.3
+      const result = stabilizer.process(0.3, 0.3)
+      expect(result).toBeCloseTo(0.3, 1)
+      // Should NOT be 1 (binary)
+      expect(result).toBeLessThan(0.5)
+    })
+
+    it('returns zero when eyes are open (not blinking)', () => {
+      const stabilizer = new BlinkStabilizer(0.25, 0.75, 2, 2)
+      expect(stabilizer.process(0.05, 0.05)).toBe(0)
     })
   })
 })

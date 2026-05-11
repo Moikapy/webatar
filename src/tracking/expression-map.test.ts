@@ -21,8 +21,9 @@ describe('expression-map', () => {
     it('maps gaze expressions to VRM look presets', () => {
       expect(ARKIT_TO_VRM.eyeLookDownLeft).toBe('lookDown')
       expect(ARKIT_TO_VRM.eyeLookDownRight).toBe('lookDown')
-      expect(ARKIT_TO_VRM.eyeLookInLeft).toBe('lookLeft')
-      expect(ARKIT_TO_VRM.eyeLookInRight).toBe('lookRight')
+      // Inner gaze = toward nose: left eye inward = looking Right
+      expect(ARKIT_TO_VRM.eyeLookInLeft).toBe('lookRight')
+      expect(ARKIT_TO_VRM.eyeLookInRight).toBe('lookLeft')
     })
 
     it('maps jaw open to aa viseme', () => {
@@ -163,6 +164,57 @@ describe('expression-map', () => {
       const result = computeCompositeExpressions({})
       expect(result.surprised).toBe(0)
       expect(result.relaxed).toBe(0)
+    })
+  })
+
+  describe('gaze mapping direction correctness', () => {
+    it('maps eyeLookInLeft to lookRight (inner gaze toward nose = right look)', () => {
+      expect(ARKIT_TO_VRM.eyeLookInLeft).toBe('lookRight')
+    })
+
+    it('maps eyeLookInRight to lookLeft (inner gaze toward nose = left look)', () => {
+      expect(ARKIT_TO_VRM.eyeLookInRight).toBe('lookLeft')
+    })
+
+    it('maps eyeLookOutLeft to lookLeft (outer gaze away from nose = left look)', () => {
+      expect(ARKIT_TO_VRM.eyeLookOutLeft).toBe('lookLeft')
+    })
+
+    it('maps eyeLookOutRight to lookRight (outer gaze away from nose = right look)', () => {
+      expect(ARKIT_TO_VRM.eyeLookOutRight).toBe('lookRight')
+    })
+  })
+
+  describe('missing blend shape mappings', () => {
+    it('maps mouthWideLeft to happy', () => {
+      const result = computeVRMExpressions({ mouthWideLeft: 0.5 })
+      expect(result.happy).toBeDefined()
+      expect(result.happy!).toBeGreaterThan(0)
+    })
+
+    it('maps mouthWideRight to happy', () => {
+      const result = computeVRMExpressions({ mouthWideRight: 0.5 })
+      expect(result.happy).toBeDefined()
+      expect(result.happy!).toBeGreaterThan(0)
+    })
+  })
+
+  describe('relaxed expression does not leak at neutral', () => {
+    it('returns zero relaxed when all inputs are zero', () => {
+      const result = computeVRMExpressions({})
+      // relaxed should never appear from zero inputs
+      expect(result.relaxed).toBeUndefined()
+    })
+
+    it('returns zero relaxed when only blink is present (no brow raise)', () => {
+      const result = computeVRMExpressions({ eyeBlinkLeft: 0.3, eyeBlinkRight: 0.3 })
+      // With eyes closed but no brow raise, relaxed should not activate
+      expect(result.relaxed).toBeUndefined()
+    })
+
+    it('returns relaxed when brow is actually raised', () => {
+      const result = computeVRMExpressions({ browOuterUpLeft: 0.5, browOuterUpRight: 0.5 })
+      expect(result.relaxed).toBeGreaterThan(0)
     })
   })
 

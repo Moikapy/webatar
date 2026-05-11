@@ -20,12 +20,15 @@ export const ARKIT_TO_VRM: Readonly<Record<string, string>> = {
   eyeBlinkRight: 'blinkRight',
 
   // Gaze — VRM has lookUp/lookDown/lookLeft/lookRight
+  // Gaze — VRM has lookUp/lookDown/lookLeft/lookRight
+  // eyeLookIn = toward nose (converge): left eye inward = looking Right
+  // eyeLookOut = away from nose (diverge): right eye outward = looking Right
   eyeLookDownLeft: 'lookDown',
   eyeLookDownRight: 'lookDown',
-  eyeLookInLeft: 'lookLeft',
-  eyeLookInRight: 'lookRight',
-  eyeLookOutLeft: 'lookRight',
-  eyeLookOutRight: 'lookLeft',
+  eyeLookInLeft: 'lookRight',
+  eyeLookInRight: 'lookLeft',
+  eyeLookOutLeft: 'lookLeft',
+  eyeLookOutRight: 'lookRight',
 
   // Mouth — vowel visemes
   jawOpen: 'aa',
@@ -34,6 +37,8 @@ export const ARKIT_TO_VRM: Readonly<Record<string, string>> = {
   // Emotion — direct contributions
   mouthSmileLeft: 'happy',
   mouthSmileRight: 'happy',
+  mouthWideLeft: 'happy',
+  mouthWideRight: 'happy',
   mouthFrownLeft: 'sad',
   mouthFrownRight: 'sad',
   browDownLeft: 'angry',
@@ -67,8 +72,6 @@ export const ARKIT_TO_VRM: Readonly<Record<string, string>> = {
   mouthStretchRight: '',
   mouthUpperUpLeft: '',
   mouthUpperUpRight: '',
-  mouthWideLeft: '',
-  mouthWideRight: '',
   cheekPuff: '',
   cheekSquintLeft: '',
   cheekSquintRight: '',

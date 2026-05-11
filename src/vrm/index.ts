@@ -1,5 +1,6 @@
 export { setVRMExpression, applyExpressionsToVRM } from './expressions'
 export { rotateVRMBone } from './bones'
+export { applyIdlePose, getIdlePose } from './idle-pose'
 export { VRMLoader } from './loader'
 export type { VRMLoaderState } from './loader'
 export type { VRMExpressionManager, VRMHumanoid, VRMInstance } from './types'

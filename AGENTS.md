@@ -6,8 +6,14 @@
 
 Before touching any code, read these in order:
 
-1. **`Spec.md`** — Full project specification, API contracts, types, architecture
-2. **`AGENTS.md`** — This file. Rules of engagement.
+1. **`AGENTS.md`** — This file. Rules of engagement.
+2. **`Spec.md`** — Full project specification, API contracts, types, architecture
+3. **`DESIGN.md`** — Canonical design system tokens (YAML) + rationale (prose). The source of truth for colors, typography, spacing, and components.
+
+If modifying styling, layout, or UI components, also read:
+- **`STYLE_GUIDE.md`** — Human-readable design reference and usage guide
+- **`src/theme.ts`** — TypeScript constants matching DESIGN.md tokens (import in JS/TSX)
+- **`src/index.css`** — CSS implementation (custom properties + utility classes)
 
 ## 1. Test-Driven Development (TDD)
 
@@ -91,16 +97,46 @@ Follow the 0xKobold philosophy at all times:
 ```
 src/
 ├── main.tsx              # Entry point
-├── App.tsx               # Root component
-├── components/           # React UI components
-├── hooks/                # React hooks (useWebatar, useAvatarGallery, etc.)
-├── engine/               # WebatarEngine orchestrator
-├── tracking/             # MediaPipe face/pose tracking
-├── vrm/                  # VRM loading, expressions, bones
-├── osa/                  # Open Source Avatars registry client
-├── rendering/            # Three.js scene setup
+├── App.tsx               # Root component (Warm Dark Editorial UI)
+├── theme.ts              # Design system tokens (TypeScript)
 ├── constants.ts          # All constants in one place
-└── utils/                # Math, permissions, helpers
+├── components/
+│   ├── AvatarGallery.tsx # OSA avatar browser + search
+│   └── ui/               # shadcn/ui components (badge, button, card, separator)
+├── hooks/
+│   └── useWebatar.ts     # Main orchestrator hook
+├── engine/
+│   ├── WebatarEngine.ts  # State machine (idle→tracking→error)
+│   └── index.ts
+├── tracking/
+│   ├── face-tracker.ts   # MediaPipe FaceLandmarker wrapper
+│   ├── pose-solver.ts     # Head rotation from landmarks
+│   ├── expression-map.ts # ARKit→VRM blend shape mapping
+│   ├── smoothing.ts       # Exponential smoothing filter
+│   └── index.ts
+├── vrm/
+│   ├── loader.ts         # Three.js scene + VRMLoader
+│   ├── expressions.ts    # Expression weight application
+│   ├── bones.ts         # VRM bone rotation helpers
+│   ├── idle-pose.ts      # Default T-pose for rest state
+│   ├── types.ts          # VRM type definitions
+│   └── index.ts
+├── osa/
+│   ├── client.ts         # Open Source Avatars registry client
+│   ├── types.ts           # Zod-validated API types
+│   └── index.ts
+├── rendering/             # Three.js scene setup
+└── utils/
+    ├── math.ts            # lerp, clamp, radDeg conversions
+    └── permissions.ts     # Camera permission helpers
+```
+
+Root-level design files:
+```
+DESIGN.md       # Canonical design system (YAML tokens + prose) — SOURCE OF TRUTH
+STYLE_GUIDE.md  # Human-readable design reference
+AGENTS.md        # This file — project rules
+Spec.md          # Full project specification
 ```
 
 ### Key Dependencies
@@ -121,7 +157,7 @@ src/
 ```
 Webcam → MediaPipe FaceLandmarker → Raw Landmarks
                                          ↓
-PoseLandmarker → Raw Landmarks    → Kalidokit-inspired solver
+PoseLandmarker → Raw Landmarks    → Custom ARKit→VRM solver
                                          ↓
                                   VRM Expressions + Bone Rotations
                                          ↓
@@ -135,6 +171,7 @@ PoseLandmarker → Raw Landmarks    → Kalidokit-inspired solver
 3. **Face tracking at 30fps, pose at 15fps** — Halves pose CPU cost with minimal visual difference
 4. **LRU VRM cache (5 models)** — Fast avatar switching without reloading
 5. **All OSA data from static JSON** — No auth, no server, aggressive caching (1hr+)
+6. **Warm Dark Editorial design system** — Defined in DESIGN.md (canonical), implemented in theme.ts (TS) and index.css (CSS). Three files must stay in sync. Lint with `bun run design:lint`.
 
 ## 4. Code Style
 
@@ -153,22 +190,41 @@ PoseLandmarker → Raw Landmarks    → Kalidokit-inspired solver
 - Never force push
 - Never rewrite git history
 
-## 6. Wiki Updates
+## 6. Codebase Wiki
 
-**After any significant code change, update the codebase wiki.**
+The wiki at `.codebase-wiki/` is our living documentation — a searchable knowledge base that persists across sessions.
 
-```bash
-# After implementing a feature
-wiki_ingest source=commits
+### When to Update
 
-# After adding new modules or entities
-wiki_entity name="module-name" summary="..." type="module"
+| Trigger | Action |
+|---------|--------|
+| After implementing a feature or bugfix | `wiki_ingest source=commits` |
+| After adding a new module, service, or component | `wiki_entity name="..." summary="..." type="module"` |
+| After making an architectural decision | `wiki_decision title="..." context="..." decision="..." status="accepted"` |
+| After creating or updating a design pattern | `wiki_concept name="..." summary="..." applies_to=[...]` |
+| Before starting work on an unfamiliar area | `wiki_query question="..."` to load context |
+| When lint shows issues | `wiki_lint` then resolve errors, merge contradictions |
+| Periodically (weekly or after big changes) | `wiki_ingest source=smart` for enriched updates |
 
-# After making architectural decisions
-wiki_decision title="..." context="..." decision="..." status="accepted"
-```
+### Ingest Sources
 
-The wiki is our living documentation. Stale wiki pages are technical debt. Keep it current.
+| Source | When to Use |
+|--------|-------------|
+| `commits` | After code changes — reads git history |
+| `tree` | **ONE TIME ONLY** — initial seed. Never re-run on an existing wiki |
+| `docs` | After adding/updating documentation files |
+| `smart` | Periodic enrichment — regex-enriched, best coverage |
+| `llm` | When you need deep agent-enriched analysis (slowest, most thorough) |
+
+### Rules
+
+- **Never run `tree` on an existing wiki** — it creates duplicate file-level pages that clutter lint reports
+- **Resolve lint errors immediately** — broken links and contradictions pile up fast
+- **Orphan warnings are acceptable** — pages get linked naturally over time as queries cross-reference them
+- **Stale wiki pages are technical debt** — keep it current or it becomes misleading
+- **Entity pages** = modules, services, components (things with source files)
+- **Concept pages** = patterns, architectures, cross-cutting concerns (things that span modules)
+- **Decision pages** = ADRs (irreversible choices with context)
 
 ## 7. Testing Commands
 
@@ -190,9 +246,26 @@ bun run lint
 
 # Build
 bun run build
+
+# Design system lint (validate DESIGN.md against spec)
+bun run design:lint
 ```
 
-## 8. Hardware Target
+## 8. Design System
+
+Three files must stay in sync. Change one, change all three:
+
+| File | Role | Audience |
+|------|------|----------|
+| **`DESIGN.md`** | Source of truth — YAML tokens + markdown prose | AI agents, linters, designers |
+| **`src/theme.ts`** | TypeScript constants matching DESIGN.md tokens | TS/JSX consumers |
+| **`src/index.css`** | CSS implementation (custom properties + utility classes) | Browser |
+
+**Rule:** If you change a color, spacing value, or typography token, update DESIGN.md first, then sync theme.ts and index.css to match. Run `bun run design:lint` to verify.
+
+Read `STYLE_GUIDE.md` for the visual reference and usage examples.
+
+## 9. Hardware Target
 
 Development machine is `dasua`:
 - AMD Ryzen 5 2600 (6C/12T), RTX 2070 8GB, 62GB RAM

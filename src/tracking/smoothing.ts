@@ -78,9 +78,12 @@ export function smoothExpressions(
 
 /**
  * Stabilize blink values to prevent rapid open/close flicker.
- * Uses a window-based approach: only register blink when eyes have been
- * closed for N consecutive frames, and only register open when eyes
- * have been open for M consecutive frames.
+ * Uses hysteresis: blink activates only after N frames above closeThreshold,
+ * and deactivates only after M frames below openThreshold.
+ *
+ * Returns the **analog** average blink weight once blink is confirmed,
+ * and 0 when eyes are confirmed open. This preserves squint/partial blink
+ * instead of snapping to binary 0/1.
  */
 export class BlinkStabilizer {
   private closeCount = 0
@@ -98,7 +101,7 @@ export class BlinkStabilizer {
    * Process a raw blink weight and return a stabilized value.
    * @param leftBlink - Raw left eye blink weight (0–1)
    * @param rightBlink - Raw right eye blink weight (0–1)
-   * @returns Stabilized blink weight (0 = open, 1 = closed)
+   * @returns Analog blink weight (0 when open, avg blink weight when blinking)
    */
   process(leftBlink: number, rightBlink: number): number {
     console.assert(leftBlink >= 0 && leftBlink <= 1, 'leftBlink must be 0–1')
@@ -130,7 +133,8 @@ export class BlinkStabilizer {
       }
     }
 
-    return this.isBlinking ? 1 : 0
+    // Return analog weight: actual blink level when blinking, 0 when open
+    return this.isBlinking ? avgBlink : 0
   }
 
   /** Reset stabilizer state */

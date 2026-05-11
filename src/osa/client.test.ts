@@ -86,7 +86,10 @@ describe('OSAClient', () => {
 
       await client.fetchProjects()
 
-      expect(mockFn).toHaveBeenCalledWith(`${BASE_URL}/projects.json`)
+      expect(mockFn).toHaveBeenCalledWith(
+        `${BASE_URL}/projects.json`,
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
 
     it('throws on network error', async () => {
@@ -132,7 +135,10 @@ describe('OSAClient', () => {
 
       await client.fetchAvatars('100avatars-r1')
 
-      expect(mockFn).toHaveBeenCalledWith(`${BASE_URL}/avatars/100avatars-r1.json`)
+      expect(mockFn).toHaveBeenCalledWith(
+        `${BASE_URL}/avatars/100avatars-r1.json`,
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
 
     it('validates avatar schema against Zod', async () => {
@@ -220,6 +226,21 @@ describe('OSAClient', () => {
       await client.fetchProjects(true) // force refresh
 
       expect(fetchCount).toBe(2)
+    })
+  })
+
+  describe('fetch timeout', () => {
+    it('uses AbortController signal in fetch calls', async () => {
+      const mockFn = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(JSON.stringify(SAMPLE_PROJECTS), { status: 200 }),
+      )
+
+      await client.fetchProjects()
+
+      // Verify that fetch was called with an AbortSignal
+      const call = mockFn.mock.calls[0]
+      expect(call[1]).toHaveProperty('signal')
+      expect(call[1]!.signal).toBeInstanceOf(AbortSignal)
     })
   })
 })

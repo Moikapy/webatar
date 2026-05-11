@@ -74,6 +74,15 @@ export function TuningPanel() {
         </div>
       </div>
 
+      {/* Model Position */}
+      <div className="mb-3">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Model Position</p>
+        <Slider label="Y Offset" value={tuningConfig.modelYOffset} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.modelYOffset = v; refresh() }} />
+        <Slider label="Hip Scale X" value={tuningConfig.hipPositionScaleX} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.hipPositionScaleX = v; refresh() }} />
+        <Slider label="Hip Scale Y" value={tuningConfig.hipPositionScaleY} min={-2} max={2} step={0.05} onChange={(v) => { tuningConfig.hipPositionScaleY = v; refresh() }} />
+        <Slider label="Hip Smooth" value={tuningConfig.hipPositionSmoothing} min={0} max={1} step={0.01} onChange={(v) => { tuningConfig.hipPositionSmoothing = v; refresh() }} />
+      </div>
+
       {/* Head Rotation */}
       <div className="mb-3">
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Head Rotation</p>
@@ -87,7 +96,6 @@ export function TuningPanel() {
         <Slider label="Expression" value={tuningConfig.expressionSmoothing} min={0} max={1} step={0.05} onChange={(v) => { tuningConfig.expressionSmoothing = v; refresh() }} />
         <Slider label="Head" value={tuningConfig.headSmoothing} min={0} max={1} step={0.05} onChange={(v) => { tuningConfig.headSmoothing = v; refresh() }} />
         <Slider label="Pose Bones" value={tuningConfig.poseSmoothing} min={0} max={1} step={0.05} onChange={(v) => { tuningConfig.poseSmoothing = v; refresh() }} />
-        <Slider label="Camera Dist" value={tuningConfig.cameraDistanceSmoothing} min={0} max={1} step={0.01} onChange={(v) => { tuningConfig.cameraDistanceSmoothing = v; refresh() }} />
       </div>
 
       {/* Body Pose */}
@@ -98,9 +106,12 @@ export function TuningPanel() {
         <Slider label="Upper Arm" value={tuningConfig.upperArmScale} min={0} max={2} step={0.1} onChange={(v) => { tuningConfig.upperArmScale = v; refresh() }} />
       </div>
 
-      {/* Camera Distance */}
+      {/* Camera */}
       <div className="mb-3">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Camera Distance</p>
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Camera</p>
+        <Slider label="Cam Y" value={tuningConfig.cameraY} min={0} max={3} step={0.1} onChange={(v) => { tuningConfig.cameraY = v; refresh() }} />
+        <Slider label="LookAt Y" value={tuningConfig.cameraLookAtY} min={0} max={3} step={0.1} onChange={(v) => { tuningConfig.cameraLookAtY = v; refresh() }} />
+        <Slider label="Cam Dist Smooth" value={tuningConfig.cameraDistanceSmoothing} min={0} max={1} step={0.01} onChange={(v) => { tuningConfig.cameraDistanceSmoothing = v; refresh() }} />
         <Slider label="Default Dist" value={tuningConfig.cameraDefaultDistance} min={1} max={8} step={0.1} onChange={(v) => { tuningConfig.cameraDefaultDistance = v; refresh() }} />
         <Slider label="Min Dist" value={tuningConfig.cameraMinDistance} min={0.5} max={4} step={0.1} onChange={(v) => { tuningConfig.cameraMinDistance = v; refresh() }} />
         <Slider label="Max Dist" value={tuningConfig.cameraMaxDistance} min={3} max={12} step={0.5} onChange={(v) => { tuningConfig.cameraMaxDistance = v; refresh() }} />
@@ -108,12 +119,12 @@ export function TuningPanel() {
         <Slider label="Z-Depth Scale" value={tuningConfig.cameraDepthScale} min={0} max={10} step={0.5} onChange={(v) => { tuningConfig.cameraDepthScale = v; refresh() }} />
       </div>
 
-      {/* Current Values Readout */}
+      {/* Live Readout */}
       <div className="rounded bg-muted/50 p-2 font-mono text-[10px] text-muted-foreground">
-        <p>camera.currentDistance: <span id="tuning-cam-dist">—</span></p>
-        <p>status: <span id="tuning-status">—</span></p>
+        <p>model.pos: <span id="tuning-model-pos">—</span></p>
+        <p>hip.pos: <span id="tuning-hip-pos">—</span></p>
+        <p>cam.dist: <span id="tuning-cam-dist">—</span></p>
         <p>face: <span id="tuning-face">—</span></p>
-        <p>fps: <span id="tuning-fps">—</span></p>
       </div>
     </div>
   )

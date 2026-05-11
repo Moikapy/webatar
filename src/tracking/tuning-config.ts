@@ -36,7 +36,21 @@ export interface TuningConfig {
   /** Upper arm rotation scale (0–2, 1=1:1) */
   upperArmScale: number
 
-  // ─── Camera Distance ─────────────────────────────────────────────
+  // ─── Model Position ─────────────────────────────────────────────
+  /** Vertical offset to lower/raise the avatar (meters, negative = lower) */
+  modelYOffset: number
+  /** Horizontal position mapping scale (0=off, 1=1:1 with your movement) */
+  hipPositionScaleX: number
+  /** Vertical position mapping scale (0=off, 1=1:1 with your movement) */
+  hipPositionScaleY: number
+  /** Hip position smoothing (0=frozen, 1=instant) */
+  hipPositionSmoothing: number
+
+  // ─── Camera ────────────────────────────────────────────────────────
+  /** Camera Y position (height, meters) */
+  cameraY: number
+  /** Camera look-at Y target (meters) */
+  cameraLookAtY: number
   /** Camera distance smoothing EMA factor (0=frozen, 1=instant) */
   cameraDistanceSmoothing: number
   /** Default camera distance (meters) when face not detected */
@@ -73,7 +87,15 @@ export const DEFAULT_TUNING: TuningConfig = {
   shoulderScale: 1.0,
   upperArmScale: 1.0,
 
-  // Camera distance
+  // Model position
+  modelYOffset: -0.1,
+  hipPositionScaleX: -0.5,
+  hipPositionScaleY: -0.8,
+  hipPositionSmoothing: 0.2,
+
+  // Camera
+  cameraY: 1.3,
+  cameraLookAtY: 1.0,
   cameraDistanceSmoothing: 0.15,
   cameraDefaultDistance: 3.5,
   cameraMinDistance: 1.5,
@@ -115,6 +137,12 @@ export const TUNING = {
   spineScale: ${tuningConfig.spineScale},
   shoulderScale: ${tuningConfig.shoulderScale},
   upperArmScale: ${tuningConfig.upperArmScale},
+  modelYOffset: ${tuningConfig.modelYOffset},
+  hipPositionScaleX: ${tuningConfig.hipPositionScaleX},
+  hipPositionScaleY: ${tuningConfig.hipPositionScaleY},
+  hipPositionSmoothing: ${tuningConfig.hipPositionSmoothing},
+  cameraY: ${tuningConfig.cameraY},
+  cameraLookAtY: ${tuningConfig.cameraLookAtY},
   cameraDistanceSmoothing: ${tuningConfig.cameraDistanceSmoothing},
   cameraDefaultDistance: ${tuningConfig.cameraDefaultDistance},
   cameraMinDistance: ${tuningConfig.cameraMinDistance},

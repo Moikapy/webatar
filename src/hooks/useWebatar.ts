@@ -76,9 +76,10 @@ export function useWebatar(
   const poseIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const isRunningRef = useRef(false)
 
-  // Smoothed pose and camera distance (mutable refs for performance)
+  // Smoothed pose, camera distance, and hip position (mutable refs for performance)
   const lastPoseBones = useRef<BoneRotations | null>(null)
   const smoothedCameraDistance = useRef<number | null>(null)
+  const smoothedHipPosition = useRef<{ x: number; y: number } | null>(null)
 
   // ─── Cleanup ──────────────────────────────────────────────────────────
 
@@ -267,13 +268,31 @@ export function useWebatar(
           rotateVRMBone(h, 'rightLowerArm', pose.rightLowerArm)
         }
 
-        // Update camera distance based on face size
+        // Update camera distance and model position
         const camDist = smoothedCameraDistance.current
+        const hipPos = smoothedHipPosition.current
+
+        // Apply camera distance
         if (camDist !== null) {
           const camera = loaderRef.current?.camera
           if (camera) {
-            camera.position.set(0, 1.3, camDist)
-            camera.lookAt(0, 1.0, 0)
+            camera.position.set(0, tuningConfig.cameraY, camDist)
+            camera.lookAt(0, tuningConfig.cameraLookAtY, 0)
+          }
+        }
+
+        // Apply model position (hip tracking + Y offset)
+        const vrm = loaderRef.current?.currentVRM
+        if (vrm) {
+          const baseY = tuningConfig.modelYOffset
+          if (hipPos) {
+            // Hip position from pose tracking
+            vrm.scene.position.x = hipPos.x
+            vrm.scene.position.y = baseY + hipPos.y
+          } else {
+            // No pose tracking — just Y offset
+            vrm.scene.position.x = 0
+            vrm.scene.position.y = baseY
           }
         }
       })
@@ -343,9 +362,45 @@ export function useWebatar(
               lastPoseBones.current = poseBones
             }
           }
+
+          // Extract hip center position for 1:1 body mapping
+          // Landmarks 23=leftHip, 24=rightHip in world coords (meters from camera)
+          const worldLandmarks = poseResult.worldLandmarks
+          if (worldLandmarks && worldLandmarks.length >= 25) {
+            const leftHip = worldLandmarks[23]
+            const rightHip = worldLandmarks[24]
+            // Hip center in 3D space
+            const hipCenterX = (leftHip.x + rightHip.x) / 2
+            const hipCenterY = (leftHip.y + rightHip.y) / 2
+
+            // Map to scene coords (mirror X, invert Y, scale by tuning factors)
+            const targetX = hipCenterX * tuningConfig.hipPositionScaleX
+            const targetY = hipCenterY * tuningConfig.hipPositionScaleY
+
+            // Smooth the position
+            const smoothFactor = tuningConfig.hipPositionSmoothing
+            if (smoothedHipPosition.current) {
+              smoothedHipPosition.current = {
+                x: smoothedHipPosition.current.x + (targetX - smoothedHipPosition.current.x) * smoothFactor,
+                y: smoothedHipPosition.current.y + (targetY - smoothedHipPosition.current.y) * smoothFactor,
+              }
+            } else {
+              smoothedHipPosition.current = { x: targetX, y: targetY }
+            }
+          }
         } else {
           // No pose detected — decay toward idle
           lastPoseBones.current = null
+          // Decay hip position back to center/zero
+          if (smoothedHipPosition.current) {
+            smoothedHipPosition.current = {
+              x: smoothedHipPosition.current.x * 0.9,
+              y: smoothedHipPosition.current.y * 0.9,
+            }
+            if (Math.abs(smoothedHipPosition.current.x) < 0.001 && Math.abs(smoothedHipPosition.current.y) < 0.001) {
+              smoothedHipPosition.current = null
+            }
+          }
         }
       }, POSE_INTERVAL_MS) // ~15fps
     } catch (err) {

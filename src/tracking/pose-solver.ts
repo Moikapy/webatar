@@ -198,16 +198,11 @@ export function solvePoseBones(
   const leftUpperArmRotation = { ...leftShoulderRotation }
   const rightUpperArmRotation = { ...rightShoulderRotation }
 
-  // Lower arm: simplified bend based on elbow angle
+  // Lower arm: zero rotation (neutral T-pose) unless elbow landmark is present
+  // Shoulder rotation already captures the arm direction; elbow bend
+  // should be derived from elbow angle, not hardcoded.
   const leftLowerArmRotation: HeadRotation = { x: 0, y: 0, z: 0 }
   const rightLowerArmRotation: HeadRotation = { x: 0, y: 0, z: 0 }
-
-  if (leftElbow) {
-    leftLowerArmRotation.x = clamp(0.5) // Default arm bend
-  }
-  if (rightElbow) {
-    rightLowerArmRotation.x = clamp(0.5)
-  }
 
   return {
     head: { x: 0, y: 0, z: 0 }, // Head comes from face tracker, not pose

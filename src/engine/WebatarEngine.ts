@@ -8,8 +8,8 @@
 import { computeVRMExpressions } from '../tracking/expression-map'
 import { smoothExpressions, BlinkStabilizer, lerpVec3 } from '../tracking/smoothing'
 import { applyExpressionsToVRM } from '../vrm/expressions'
-import { rotateVRMBone } from '../vrm/bones'
-import type { VRMExpressionManager, VRMHumanoid, VRMInstance } from '../vrm/types'
+import { applyIdlePose } from '../vrm/idle-pose'
+import type { VRMExpressionManager, VRMHumanoid } from '../vrm/types'
 import type { HeadRotation } from '../tracking/pose-solver'
 
 export interface WebatarConfig {
@@ -19,7 +19,10 @@ export interface WebatarConfig {
   cameraFov?: number
   enablePoseTracking?: boolean
   enableHandTracking?: boolean
-  smoothingFactor?: number
+  /** Expression smoothing (0=instant, 1=frozen). Higher = less jitter but more lag. */
+  expressionSmoothing?: number
+  /** Head rotation smoothing (0=instant, 1=frozen). Higher = smoother but more lag. */
+  headSmoothing?: number
   debugOverlay?: boolean
 }
 
@@ -52,8 +55,16 @@ export class WebatarEngine {
   private lastFpsTime = 0
   private frameCount = 0
 
-  // @ts-expect-error VRM instance - will be set during avatar loading
-  private _vrm: VRMInstance | null = null
+  /** Expose humanoid for afterUpdate bone application */
+  get currentHumanoid(): VRMHumanoid | null {
+    return this.humanoid
+  }
+
+  /** Expose latest head rotation for afterUpdate bone application */
+  get currentHeadRotation(): HeadRotation | null {
+    return this.humanoid ? this.lastHeadRotation : null
+  }
+
   private expressionManager: VRMExpressionManager | null = null
   private humanoid: VRMHumanoid | null = null
 
@@ -65,7 +76,8 @@ export class WebatarEngine {
       cameraFov: config.cameraFov ?? 30,
       enablePoseTracking: config.enablePoseTracking ?? true,
       enableHandTracking: config.enableHandTracking ?? false,
-      smoothingFactor: config.smoothingFactor ?? 0.35,
+      expressionSmoothing: config.expressionSmoothing ?? 0.6,
+      headSmoothing: config.headSmoothing ?? 0.5,
       debugOverlay: config.debugOverlay ?? false,
     }
 
@@ -123,7 +135,6 @@ export class WebatarEngine {
   destroy(): void {
     this.stop()
     this.listeners.clear()
-    this._vrm = null
     this.expressionManager = null
     this.humanoid = null
   }
@@ -144,26 +155,31 @@ export class WebatarEngine {
       ),
     })
 
-    if (!this.expressionManager) return
+    if (!this.expressionManager) {
+      // Expected state: processing data before VRM is loaded
+      return
+    }
 
     // 1. Compute VRM expressions from ARKit blend shapes
     const rawExpressions = computeVRMExpressions(blendShapes)
 
-    // 2. Smooth expressions to prevent jitter
+    // 2. Smooth expressions to reduce jitter
     const smoothedExpressions = smoothExpressions(
       this.lastExpressions,
       rawExpressions,
-      this.config.smoothingFactor,
+      this.config.expressionSmoothing,
     )
     this.lastExpressions = smoothedExpressions
 
-    // 3. Stabilize blinks
+    // 3. Stabilize blinks (hysteresis filter, returns analog weight)
     const blinkWeight = this.blinkStabilizer.process(
       blendShapes.eyeBlinkLeft ?? 0,
       blendShapes.eyeBlinkRight ?? 0,
     )
 
-    // Override blink expressions with stabilized values
+    // Apply stabilized blink as the smoothed value (replaces expression smoothing for blinks)
+    // BlinkStabilizer uses hysteresis (requires N frames to open/close) and returns
+    // analog weight, so it replaces the smoothing entirely for blink channels.
     smoothedExpressions.blinkLeft = blinkWeight
     smoothedExpressions.blinkRight = blinkWeight
 
@@ -175,18 +191,14 @@ export class WebatarEngine {
    * Process head rotation from face landmarks.
    */
   processHeadRotation(rotation: Readonly<HeadRotation>): void {
-    if (!this.humanoid) return
+    if (!this.humanoid) {
+      // Expected state: processing data before VRM is loaded
+      return
+    }
 
-    // Smooth head rotation
-    const smoothed = lerpVec3(this.lastHeadRotation, rotation, this.config.smoothingFactor)
+    // Smooth head rotation and cache for render loop's afterUpdate
+    const smoothed = lerpVec3(this.lastHeadRotation, rotation, this.config.headSmoothing)
     this.lastHeadRotation = smoothed
-
-    rotateVRMBone(this.humanoid, 'head', smoothed)
-    rotateVRMBone(this.humanoid, 'neck', {
-      x: smoothed.x * 0.3,
-      y: smoothed.y * 0.3,
-      z: smoothed.z * 0.3,
-    })
   }
 
   /**
@@ -195,6 +207,10 @@ export class WebatarEngine {
   setVRM(vrm: { expressionManager?: VRMExpressionManager | null; humanoid?: VRMHumanoid | null }): void {
     this.expressionManager = vrm.expressionManager ?? null
     this.humanoid = vrm.humanoid ?? null
+
+    // Apply idle pose so the avatar starts in a natural stance
+    applyIdlePose(this.humanoid!)
+
     this.updateState({ currentAvatarId: vrm.expressionManager ? 'loaded' : null })
   }
   processFaceLost(): void {

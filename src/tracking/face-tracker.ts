@@ -25,9 +25,6 @@ export interface FaceTrackingResult {
 export class FaceTracker {
   private _state: TrackerState = 'idle'
   private faceLandmarker: FaceLandmarker | null = null
-  /** @internal Will be used by processFrame */
-  // @ts-expect-error -- will be used by processFrame
-  private _videoElement: HTMLVideoElement | null = null
   private lastTimestamp = -1
   private _lastResult: FaceTrackingResult | null = null
 
@@ -117,8 +114,9 @@ export class FaceTracker {
     }
 
     const landmarks = results.faceLandmarks[0]
+    const rawBlendShapes = results.faceBlendshapes?.[0]
     const blendShapes = this.extractBlendShapes(
-      results.faceBlendshapes?.[0] as unknown as Array<{ categoryName: string; score: number }> ?? null,
+      rawBlendShapes?.categories ?? null,
     )
     const headRotation = this.extractHeadRotation(landmarks)
 
@@ -148,7 +146,7 @@ export class FaceTracker {
   ): Record<string, number> {
     const result: Record<string, number> = {}
 
-    if (!blendShapes) return result
+    if (!blendShapes || !Array.isArray(blendShapes)) return result
 
     for (const shape of blendShapes) {
       if (shape.score > 0) {

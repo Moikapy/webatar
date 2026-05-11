@@ -15,7 +15,8 @@ describe('WebatarEngine', () => {
     engine = new WebatarEngine({
       canvas,
       enablePoseTracking: false,
-      smoothingFactor: 0.35,
+      expressionSmoothing: 0.6,
+      headSmoothing: 0.5,
     })
   })
 
@@ -29,7 +30,7 @@ describe('WebatarEngine', () => {
     })
 
     it('creates engine with custom smoothing', () => {
-      const e = new WebatarEngine({ canvas, smoothingFactor: 0.5 })
+      const e = new WebatarEngine({ canvas, expressionSmoothing: 0.5, headSmoothing: 0.5 })
       expect(e.currentState.status).toBe('idle')
     })
   })

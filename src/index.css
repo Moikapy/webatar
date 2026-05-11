@@ -5,6 +5,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── Typography Scale (ToxSam-inspired) ─── */
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', system-ui, sans-serif;
@@ -46,101 +47,317 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
-
-    /* Webatar custom colors — hex for max browser compatibility */
-    --color-emerald-glow: #10b981;
-    --color-emerald-dim: #064e3b;
-    --color-surface-dark: #0a0a0e;
-    --color-surface-mid: #141419;
-    --color-surface-light: #1a1a22;
 }
 
-/* Webatar is always dark mode — set on :root */
+/* ─── Color palette — Warm dark (always dark mode) ─── */
 :root {
-    --background: #0a0a0e;
-    --foreground: #f0f0f5;
-    --card: #141419;
-    --card-foreground: #f0f0f5;
-    --popover: #141419;
-    --popover-foreground: #f0f0f5;
+    /* Warm dark palette inspired by ToxSam */
+    --background: #141311;
+    --foreground: #f5f5f5;
+    --card: #1a1918;
+    --card-foreground: #f5f5f5;
+    --popover: #1a1918;
+    --popover-foreground: #f5f5f5;
     --primary: #10b981;
-    --primary-foreground: #0a0a0e;
-    --secondary: #1a1a22;
-    --secondary-foreground: #f0f0f5;
-    --muted: #1a1a22;
-    --muted-foreground: #8a8a95;
-    --accent: #1a1a22;
-    --accent-foreground: #f0f0f5;
+    --primary-foreground: #0a0a0a;
+    --secondary: #222220;
+    --secondary-foreground: #f5f5f5;
+    --muted: #222220;
+    --muted-foreground: #8a8a90;
+    --accent: #2a2a28;
+    --accent-foreground: #f5f5f5;
     --destructive: #ef4444;
     --border: rgba(255, 255, 255, 0.08);
     --input: rgba(255, 255, 255, 0.12);
     --ring: #10b981;
     --chart-1: #10b981;
-    --chart-2: #8a8a95;
+    --chart-2: #8a8a90;
     --chart-3: #6b7280;
     --chart-4: #4b5563;
     --chart-5: #374151;
-    --radius: 0.5rem;
-    --sidebar: #111115;
-    --sidebar-foreground: #f0f0f5;
+    --radius: 0.375rem;
+    --sidebar: #161614;
+    --sidebar-foreground: #f5f5f5;
     --sidebar-primary: #10b981;
-    --sidebar-primary-foreground: #0a0a0e;
-    --sidebar-accent: #1a1a22;
-    --sidebar-accent-foreground: #f0f0f5;
+    --sidebar-primary-foreground: #0a0a0a;
+    --sidebar-accent: #222220;
+    --sidebar-accent-foreground: #f5f5f5;
     --sidebar-border: rgba(255, 255, 255, 0.08);
     --sidebar-ring: #6b7280;
 }
 
 .dark {
     /* Same as :root — always dark */
-    --background: #0a0a0e;
-    --foreground: #f0f0f5;
-    --card: #141419;
-    --card-foreground: #f0f0f5;
-    --popover: #141419;
-    --popover-foreground: #f0f0f5;
+    --background: #141311;
+    --foreground: #f5f5f5;
+    --card: #1a1918;
+    --card-foreground: #f5f5f5;
+    --popover: #1a1918;
+    --popover-foreground: #f5f5f5;
     --primary: #10b981;
-    --primary-foreground: #0a0a0e;
-    --secondary: #1a1a22;
-    --secondary-foreground: #f0f0f5;
-    --muted: #1a1a22;
-    --muted-foreground: #8a8a95;
-    --accent: #1a1a22;
-    --accent-foreground: #f0f0f5;
+    --primary-foreground: #0a0a0a;
+    --secondary: #222220;
+    --secondary-foreground: #f5f5f5;
+    --muted: #222220;
+    --muted-foreground: #8a8a90;
+    --accent: #2a2a28;
+    --accent-foreground: #f5f5f5;
     --destructive: #ef4444;
     --border: rgba(255, 255, 255, 0.08);
     --input: rgba(255, 255, 255, 0.12);
     --ring: #10b981;
     --chart-1: #10b981;
-    --chart-2: #8a8a95;
+    --chart-2: #8a8a90;
     --chart-3: #6b7280;
     --chart-4: #4b5563;
     --chart-5: #374151;
-    --sidebar: #111115;
-    --sidebar-foreground: #f0f0f5;
+    --sidebar: #161614;
+    --sidebar-foreground: #f5f5f5;
     --sidebar-primary: #10b981;
-    --sidebar-primary-foreground: #0a0a0e;
-    --sidebar-accent: #1a1a22;
-    --sidebar-accent-foreground: #f0f0f5;
+    --sidebar-primary-foreground: #0a0a0a;
+    --sidebar-accent: #222220;
+    --sidebar-accent-foreground: #f5f5f5;
     --sidebar-border: rgba(255, 255, 255, 0.08);
     --sidebar-ring: #6b7280;
 }
 
-/* DIRECT FALLBACK: body/html styles outside @layer for max compatibility */
+/* ─── Base styles ─── */
 html {
-  font-family: 'Geist Variable', system-ui, sans-serif;
+    font-family: 'Geist Variable', system-ui, sans-serif;
 }
 
 body {
-  background-color: #0a0a0e;
-  color: #f0f0f5;
+    background-color: #141311;
+    color: #f5f5f5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selection colors */
+::selection {
+    background-color: rgba(16, 185, 129, 0.3);
+    color: #f5f5f5;
+}
+
+/* Focus visible */
+:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #141311, 0 0 0 4px #10b981;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* ─── Typography utility classes (ToxSam scale) ─── */
+.text-display {
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+.text-headline {
+    font-size: clamp(2rem, 5vw, 4rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+.text-title {
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+}
+
+.text-body {
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.text-body-lg {
+    font-size: 1.25rem;
+    line-height: 1.6;
+}
+
+.text-caption {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    letter-spacing: 0.05em;
+}
+
+.text-small {
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+/* ─── Layout utilities (ToxSam-style) ─── */
+.container-custom {
+    width: 100%;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+@media (min-width: 768px) {
+    .container-custom {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .container-custom {
+        padding-left: 3rem;
+        padding-right: 3rem;
+    }
+}
+
+.section-padding {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+}
+
+@media (min-width: 768px) {
+    .section-padding {
+        padding-top: 8rem;
+        padding-bottom: 8rem;
+    }
+}
+
+/* ─── Button styles (ToxSam-inspired) ─── */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    background-color: #f5f5f5;
+    color: #141311;
+    border-radius: 0.375rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary:hover {
+    background-color: #d4d4d4;
+}
+
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border: 2px solid #f5f5f5;
+    color: #f5f5f5;
+    background: transparent;
+    border-radius: 0.375rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-outline:hover {
+    background-color: #f5f5f5;
+    color: #141311;
+}
+
+/* ─── Link hover animation (ToxSam-style) ─── */
+.link-hover {
+    position: relative;
+}
+
+.link-hover::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 1px;
+    width: 0;
+    background-color: currentColor;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.link-hover:hover::after {
+    width: 100%;
+}
+
+/* ─── Animations (ToxSam-style) ─── */
+@keyframes slideUp {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-up {
+    animation: slideUp 0.6s ease-out forwards;
+}
+
+.animation-delay-100 {
+    animation-delay: 0.1s;
+    opacity: 0;
+}
+
+.animation-delay-200 {
+    animation-delay: 0.2s;
+    opacity: 0;
+}
+
+.animation-delay-300 {
+    animation-delay: 0.3s;
+    opacity: 0;
+}
+
+/* ─── Text shadow for readability over 3D content ─── */
+.text-shadow-dark {
+    text-shadow: 0 3px 12px rgba(20, 19, 17, 0.95),
+                 0 0 16px rgba(20, 19, 17, 0.8);
+}
+
+.text-shadow-dark-strong {
+    text-shadow: 0 4px 16px #141311,
+                 0 0 24px rgba(20, 19, 17, 0.9);
+}
+
+/* ─── Stat number style (ToxSam-inspired) ─── */
+.stat-number {
+    font-size: clamp(2rem, 4vw, 3.75rem);
+    font-weight: 700;
+    line-height: 1;
+    color: #f5f5f5;
+}
+
+/* ─── Scrollbar styling ─── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.2);
 }

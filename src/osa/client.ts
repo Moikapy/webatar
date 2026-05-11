@@ -14,8 +14,20 @@ export class OSAClient {
   private avatarCache: Map<string, Avatar[]> = new Map()
   private cacheTimestamp: number = 0
   private readonly CACHE_TTL_MS = 3600_000 // 1 hour
+  private readonly FETCH_TIMEOUT_MS = 10_000 // 10 seconds
 
   constructor(private readonly baseUrl: string = OSA_DATA_BASE_URL) {}
+
+  private async fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.FETCH_TIMEOUT_MS)
+    try {
+      const response = await fetch(url, { ...init, signal: controller.signal })
+      return response
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  }
 
   /**
    * Fetch all projects from the registry.
@@ -28,7 +40,7 @@ export class OSAClient {
     }
 
     const url = `${this.baseUrl}/projects.json`
-    const response = await fetch(url)
+    const response = await this.fetchWithTimeout(url)
 
     if (!response.ok) {
       throw new Error(`OSA fetch failed: ${response.status} ${response.statusText}`)
@@ -60,7 +72,7 @@ export class OSAClient {
     }
 
     const url = `${this.baseUrl}/${project.avatar_data_file}`
-    const response = await fetch(url)
+    const response = await this.fetchWithTimeout(url)
 
     if (!response.ok) {
       throw new Error(`OSA avatar fetch failed: ${response.status} ${response.statusText}`)

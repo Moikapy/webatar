@@ -8,10 +8,9 @@
  *   - Thumbnail grid with selection ring
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { OSAClient } from '../osa/client'
 import type { Avatar } from '../osa/types'
-import { Button } from './ui/button'
 
 const PAGE_SIZE = 25
 
@@ -30,11 +29,17 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
   const [page, setPage] = useState(1)
   const [query, setQuery] = useState('')
 
+  const clientRef = useRef<OSAClient | null>(null)
+  const getClient = useCallback(() => {
+    if (!clientRef.current) clientRef.current = new OSAClient()
+    return clientRef.current
+  }, [])
+
   const fetchAvatars = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const client = new OSAClient()
+      const client = getClient()
       const data = await client.fetchMVPAvatars()
       const valid = data.filter(
         (a) =>
@@ -76,7 +81,7 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+      <div className="flex flex-1 items-center justify-center text-body text-muted-foreground">
         Loading avatars…
       </div>
     )
@@ -84,11 +89,11 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
 
   if (error) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-destructive">
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-body text-destructive">
         <p>{error}</p>
         <button
           onClick={fetchAvatars}
-          className="rounded-md bg-secondary px-3 py-1 text-xs text-secondary-foreground hover:bg-secondary/80"
+          className="rounded-md border border-border bg-muted px-3 py-1 text-xs text-foreground hover:bg-accent transition-colors"
         >
           Retry
         </button>
@@ -109,7 +114,7 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
               setPage(1)
             }}
             placeholder="Search by name or number…"
-            className="w-full rounded-md border border-border bg-background px-3 py-2 pl-8 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full rounded-md border border-border bg-background px-3 py-2 pl-8 text-small text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
           />
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
             🔍
@@ -121,7 +126,7 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
               setQuery('')
               setPage(1)
             }}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-small text-muted-foreground hover:text-foreground transition-colors link-hover"
           >
             Clear
           </button>
@@ -129,11 +134,11 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
       </div>
 
       {/* Info bar */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground flex-shrink-0">
+      <div className="flex items-center justify-between text-caption text-muted-foreground flex-shrink-0">
         <span>
           {total === 0
             ? 'No avatars found'
-            : `Showing ${start + 1}-${end} of ${total} avatars`}
+            : `Showing ${start + 1}–${end} of ${total} avatars`}
         </span>
       </div>
 
@@ -143,10 +148,10 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
           <button
             key={avatar.id}
             onClick={() => onSelect(avatar)}
-            className={`group relative overflow-hidden rounded-lg border-2 transition-colors duration-150 ${
+            className={`group relative overflow-hidden rounded-lg border transition-colors duration-150 ${
               selectedId === avatar.id
-                ? 'ring-2 ring-primary border-primary'
-                : 'border-border hover:border-primary/40'
+                ? 'border-primary ring-2 ring-primary'
+                : 'border-border hover:border-foreground/20'
             }`}
             style={{ aspectRatio: '1 / 1' }}
             title={`${avatar.name} (${avatar.metadata?.number ?? ''})`}
@@ -160,7 +165,7 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
                 (e.target as HTMLImageElement).style.display = 'none'
               }}
             />
-            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-[11px] font-medium text-white truncate">
+            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-[11px] font-medium text-white truncate text-shadow-dark">
               {avatar.name}
             </span>
           </button>
@@ -170,25 +175,23 @@ export function AvatarGallery({ onSelect, selectedId }: AvatarGalleryProps) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between flex-shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            className="btn-outline text-xs px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={effectivePage <= 1}
           >
             ← Prev
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            Page {effectivePage} of {totalPages}
+          </button>
+          <span className="text-caption text-muted-foreground">
+            {effectivePage} / {totalPages}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            className="btn-outline text-xs px-3 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={effectivePage >= totalPages}
           >
             Next →
-          </Button>
+          </button>
         </div>
       )}
     </div>
