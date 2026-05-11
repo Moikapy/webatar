@@ -2,10 +2,14 @@
  * WebcamOverlay — Toggleable debug overlay showing webcam feed,
  * face mesh landmarks, and blend shape labels over the avatar canvas.
  *
- * Renders three independent layers controlled by the `layers` prop:
+ * Architecture: Video is the master switch. Landmarks and blend shapes
+ * render ON TOP of the webcam video — they're meaningless without face context.
+ * Enabling video hides the sidebar video panel (avoid duplicate).
+ *
+ * Layers:
  *   - video: semi-transparent webcam feed drawn via canvas drawImage
- *   - landmarks: face mesh dots
- *   - blendShapes: active blend shape names + weights
+ *   - landmarks: face mesh dots (only visible when video is ON)
+ *   - blendShapes: active blend shape names + weights (only visible when video is ON)
  *
  * All rendering happens on a single 2D overlay canvas — no DOM manipulation
  * of the video element needed.
@@ -33,7 +37,8 @@ interface WebcamOverlayProps {
 
 /**
  * WebcamOverlay renders the debug overlay on top of the avatar canvas.
- * Each layer (video, landmarks, blend shapes) is independently toggleable.
+ * Video is the master layer — landmarks and blend shapes only draw
+ * when the video layer is active, since they need face context to be meaningful.
  *
  * The overlay canvas runs its own rAF loop for drawing,
  * not tied to the 30fps tracking interval.
@@ -81,8 +86,9 @@ export function WebcamOverlay({
       }
     }
 
-    // Layer 2: Draw face mesh landmarks
-    if (layers.landmarks && landmarks.length > 0) {
+    // Layer 2: Draw face mesh landmarks (only over video — need face context)
+    const showLandmarks = layers.landmarks && layers.video && landmarks.length > 0
+    if (showLandmarks) {
       const landmarkStyle: LandmarkStyle = {
         color: OVERLAY_DEFAULTS.LANDMARK.color,
         radius: OVERLAY_DEFAULTS.LANDMARK.radius,
@@ -91,8 +97,9 @@ export function WebcamOverlay({
       drawFaceLandmarks(ctx, landmarks, landmarkStyle, width, height, true)
     }
 
-    // Layer 3: Draw blend shape labels
-    if (layers.blendShapes && Object.keys(blendShapes).length > 0) {
+    // Layer 3: Draw blend shape labels (only over video — need face context)
+    const showBlendShapes = layers.blendShapes && layers.video && Object.keys(blendShapes).length > 0
+    if (showBlendShapes) {
       const labelStyle: LabelStyle = {
         color: OVERLAY_DEFAULTS.LABEL.color,
         fontSize: OVERLAY_DEFAULTS.LABEL.fontSize,

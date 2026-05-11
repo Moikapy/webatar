@@ -183,8 +183,8 @@ export function App() {
         {activeTab === 'studio' && (
           <div className="flex flex-1 flex-col">
             <div className="flex flex-1 flex-col lg:flex-row">
-              {/* Camera panel */}
-              <aside className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border">
+              {/* Camera panel — hidden when overlay video is active (avoid duplicate) */}
+              <aside className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border ${overlayLayers.video ? 'hidden lg:hidden' : ''}`}>
                 <div className="p-4">
                   <p className="text-caption uppercase tracking-widest text-muted-foreground mb-3">
                     Camera
@@ -258,7 +258,7 @@ export function App() {
               )}
               {error && <p className="text-sm text-destructive">{error}</p>}
 
-              {/* Debug overlay toggles */}
+              {/* Debug overlay toggles — video is the master switch */}
               {state.status === 'tracking' && (
                 <div className="flex items-center gap-1 ml-4">
                   <button
@@ -268,14 +268,16 @@ export function App() {
                     🎥 Video
                   </button>
                   <button
-                    className={`px-2 py-1 text-xs rounded transition-colors ${overlayLayers.landmarks ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => setOverlayLayers(prev => ({ ...prev, landmarks: !prev.landmarks }))}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${overlayLayers.landmarks && overlayLayers.video ? 'bg-primary/20 text-primary' : !overlayLayers.video ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => overlayLayers.video && setOverlayLayers(prev => ({ ...prev, landmarks: !prev.landmarks }))}
+                    disabled={!overlayLayers.video}
                   >
                     📍 Landmarks
                   </button>
                   <button
-                    className={`px-2 py-1 text-xs rounded transition-colors ${overlayLayers.blendShapes ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => setOverlayLayers(prev => ({ ...prev, blendShapes: !prev.blendShapes }))}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${overlayLayers.blendShapes && overlayLayers.video ? 'bg-primary/20 text-primary' : !overlayLayers.video ? 'opacity-40 cursor-not-allowed bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => overlayLayers.video && setOverlayLayers(prev => ({ ...prev, blendShapes: !prev.blendShapes }))}
+                    disabled={!overlayLayers.video}
                   >
                     🏷️ Shapes
                   </button>
