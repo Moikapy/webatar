@@ -75,6 +75,28 @@ export const MEDIAPIPE_CONFIG = {
     'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker/float16/latest/pose_landmarker.task',
 } as const
 
+/** Overlay rendering constants */
+export const OVERLAY_DEFAULTS = {
+  LANDMARK: {
+    color: '#10b981',
+    radius: 2,
+    opacity: 0.8,
+  },
+  LABEL: {
+    color: '#ffffff',
+    fontSize: 11,
+    lineHeight: 16,
+    threshold: 0.02,
+    maxLabels: 15,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingX: 6,
+    paddingY: 2,
+  },
+  VIDEO: {
+    defaultOpacity: 0.3,
+  },
+} as const
+
 /** Hardware performance profiles */
 export const HARDWARE_PROFILES = {
   /** High-end profile (development machine: Ryzen 2600 + RTX 2070 + C930e) */
