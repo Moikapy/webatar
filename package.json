@@ -18,7 +18,7 @@
     "design:export": "npx @google/design.md export --format css-tailwind DESIGN.md > src/theme-tokens.css"
   },
   "dependencies": {
-    "@0xkobold/warm-editorial": "../warm-editorial",
+    "@0xkobold/warm-editorial": "github:Moikapy/warm-editorial",
     "@base-ui/react": "^1.4.1",
     "@fontsource-variable/geist": "^5.2.8",
     "@mediapipe/tasks-vision": "^0.10.18",
