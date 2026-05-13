@@ -27,3 +27,5 @@ vite.config.ts.timestamp*
 test-results/
 playwright-report/
 
+dist-electron/
+release/

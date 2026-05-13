@@ -3,10 +3,17 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "dev:electron": "concurrently \"vite\" \"wait-on http://localhost:3000 && tsc -p electron/tsconfig.json && electron .\"",
     "build": "tsc -b && vite build",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "build:all": "bun run build && bun run build:electron",
     "preview": "vite preview",
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
     "test": "bun test src/",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -47,10 +54,45 @@
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^9.2.1",
+    "electron": "^42.0.1",
+    "electron-builder": "^26.8.1",
     "jsdom": "^26.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
     "vite": "^6.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "wait-on": "^9.0.10"
+  },
+  "build": {
+    "appId": "com.webatar.app",
+    "productName": "Webatar",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "!dist-electron/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "icon": "public/icon.png"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "AudioVideo",
+      "icon": "public/icon.png"
+    },
+    "win": {
+      "target": ["nsis"],
+      "icon": "public/icon.png"
+    }
   }
 }

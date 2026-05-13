@@ -14,6 +14,7 @@ import { useWebatar } from './hooks/useWebatar'
 import { AvatarGallery } from './components/AvatarGallery'
 import { WebcamOverlay } from './components/WebcamOverlay'
 import { TuningPanel } from './components/TuningPanel'
+import { StudioView } from './components/StudioView'
 import { tuningConfig } from './tracking/tuning-config'
 import type { Avatar } from './osa/types'
 import { Badge } from './components/ui/badge'
@@ -67,8 +68,7 @@ export function App() {
   const [showDebugOverlay, setShowDebugOverlay] = useState(false)
   const [showTuningPanel, setShowTuningPanel] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('studio')
-  const [splitRatio, setSplitRatio] = useState(50) // percentage for left panel
-  const isDragging = useRef(false)
+  const [pipVisible, setPipVisible] = useState(true)
 
   // Restore last-selected avatar from localStorage
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(() => {
