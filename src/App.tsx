@@ -56,7 +56,7 @@ const STATUS_LABELS: Record<string, { label: string; dot: string }> = {
   stopped:       { label: 'Stopped',   dot: 'bg-muted-foreground' },
 }
 
-type TabValue = 'studio' | 'avatars' | 'settings'
+type TabValue = 'studio' | 'avatars' | 'settings' | 'stream'
 type ViewMode = 'studio' | 'performance'
 
 export function App() {
@@ -168,8 +168,8 @@ export function App() {
 
             {/* Navigation tabs */}
             <div className="flex items-center gap-1">
-              {(['studio', 'avatars', 'settings'] as const).map((tab) => {
-                const label = tab === 'studio' ? 'Studio' : tab === 'avatars' ? 'Avatars' : 'Settings'
+              {(['studio', 'avatars', 'stream', 'settings'] as const).map((tab) => {
+                const label = tab === 'studio' ? 'Studio' : tab === 'avatars' ? 'Avatars' : tab === 'stream' ? 'Stream' : 'Settings'
                 const isActive = activeTab === tab
                 return (
                   <button
@@ -388,6 +388,50 @@ export function App() {
                   <div className="rounded-lg border border-border p-3 text-xs text-muted-foreground font-mono">
                     Status: {state.status} · FPS: {state.fps} · Face: {state.faceDetected ? 'Yes' : 'No'}
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Stream View — streaming setup and virtual camera info */}
+        {activeTab === 'stream' && (
+          <div className="container-custom section-padding">
+            <div className="max-w-2xl">
+              <p className="text-caption uppercase tracking-widest text-muted-foreground mb-2">
+                Output
+              </p>
+              <h2 className="text-headline text-foreground mb-8">Stream</h2>
+
+              <div className="flex flex-col gap-6">
+                {/* Quick start */}
+                <div className="rounded-lg border border-border p-4">
+                  <h3 className="text-sm font-medium text-foreground mb-3">Quick Start</h3>
+                  <ol className="flex flex-col gap-2 text-sm text-muted-foreground">
+                    <li>1. Start face tracking in the Studio tab</li>
+                    <li>2. Switch to <strong className="text-foreground">Performance</strong> view for transparent background</li>
+                    <li>3. Open <strong className="text-foreground">OBS Studio</strong></li>
+                    <li>4. Add a <strong className="text-foreground">Window Capture</strong> source → select Webatar</li>
+                    <li>5. In OBS: <strong className="text-foreground">Start Virtual Camera</strong></li>
+                    <li>6. Select <strong className="text-foreground">OBS Virtual Camera</strong> in Zoom/Discord/etc.</li>
+                  </ol>
+                </div>
+
+                {/* Tips */}
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <h3 className="text-sm font-medium text-primary mb-2">Stream Tips</h3>
+                  <ul className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+                    <li>Use <strong className="text-foreground">Performance mode</strong> for transparent background (OBS chroma key)</li>
+                    <li>Use <strong className="text-foreground">PiP mode</strong> (Ctrl+Shift+P in Electron) for a small always-on-top window</li>
+                    <li>Set your webcam to <strong className="text-foreground">1920×1080</strong> for best tracking accuracy</li>
+                    <li>The <strong className="text-foreground">🎭 button</strong> in Performance mode toggles debug overlay</li>
+                  </ul>
+                </div>
+
+                {/* Status */}
+                <div className="rounded-lg border border-border p-3 text-xs text-muted-foreground font-mono">
+                  Status: {state.status} · FPS: {state.fps} · Face: {state.faceDetected ? 'Yes' : 'No'}
+                  {' · '}{state.fps > 0 ? `${state.fps}fps` : 'No tracking'}
                 </div>
               </div>
             </div>
