@@ -12,7 +12,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { useWebatar } from './hooks/useWebatar'
 import { AvatarGallery } from './components/AvatarGallery'
-import { WebcamOverlay } from './components/WebcamOverlay'
 import { TuningPanel } from './components/TuningPanel'
 import { StudioView } from './components/StudioView'
 import { tuningConfig } from './tracking/tuning-config'
@@ -110,27 +109,6 @@ export function App() {
   const handleDestroy = useCallback(() => {
     destroy()
   }, [destroy])
-
-  // Resize handler for the split pane drag
-  const handleMouseDown = useCallback(() => {
-    isDragging.current = true
-    document.body.style.cursor = 'col-resize'
-    document.body.style.userSelect = 'none'
-  }, [])
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging.current) return
-    const container = e.currentTarget
-    const rect = container.getBoundingClientRect()
-    const ratio = ((e.clientX - rect.left) / rect.width) * 100
-    setSplitRatio(Math.max(20, Math.min(80, ratio)))
-  }, [])
-
-  const handleMouseUp = useCallback(() => {
-    isDragging.current = false
-    document.body.style.cursor = ''
-    document.body.style.userSelect = ''
-  }, [])
 
   const statusConfig = STATUS_LABELS[state.status] ?? STATUS_LABELS.idle
 
@@ -241,102 +219,33 @@ export function App() {
 
       {/* ─── Main content ─── */}
       <main className="flex flex-1 flex-col pt-14">
-        {/* Studio View — 50/50 split: webcam+debug | avatar */}
+        {/* ─── Studio View — Avatar hero, webcam PIP ─── */}
         {activeTab === 'studio' && viewMode === 'studio' && (
-          <div
-            className="flex flex-1 flex-col lg:flex-row"
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
-          >
-            {/* Left panel: webcam + debug overlay */}
-            <div
-              className="flex flex-col border-b lg:border-b-0 lg:border-r border-border"
-              style={{ width: `${splitRatio}%`, minWidth: '20%', maxWidth: '80%' }}
-            >
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border">
-                <p className="text-caption uppercase tracking-widest text-muted-foreground">
-                  Camera
-                </p>
-                <button
-                  className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                    showDebugOverlay
-                      ? 'bg-primary/20 text-primary border border-primary/30'
-                      : 'bg-muted text-muted-foreground hover:text-foreground border border-transparent'
-                  }`}
-                  onClick={() => setShowDebugOverlay(prev => !prev)}
-                  disabled={state.status !== 'tracking'}
-                  title={state.status === 'tracking' ? 'Toggle tracking debug overlay' : 'Start tracking to enable debug overlay'}
-                >
-                  🔍 Debug
-                </button>
-              </div>
-              <div className="relative flex-1 bg-muted">
-                <video
-                  ref={videoRef}
-                  id="webcam-video"
-                  className="absolute inset-0 w-full h-full object-contain"
-                  autoPlay
-                  playsInline
-                  muted
-                  style={{ transform: 'scaleX(-1)' }}
-                />
-                <WebcamOverlay
-                  landmarks={latestLandmarks}
-                  blendShapes={latestBlendShapes}
-                  layers={overlayLayers}
-                  className="w-full h-full"
-                />
-              </div>
-            </div>
-
-            {/* Drag handle */}
-            <div
-              className="hidden lg:flex w-1 cursor-col-resize bg-border hover:bg-primary/30 active:bg-primary/50 transition-colors items-center justify-center"
-              onMouseDown={handleMouseDown}
-            >
-              <div className="w-0.5 h-8 rounded-full bg-muted-foreground/30" />
-            </div>
-
-            {/* Right panel: avatar canvas */}
-            <div className="flex flex-1 flex-col">
-              <div className="flex items-center justify-between px-3 py-1 border-b border-border">
-                <p className="text-caption uppercase tracking-widest text-muted-foreground">
-                  Avatar
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    className={`px-2 py-0.5 text-xs rounded transition-colors ${
-                      tuningConfig.showDebugScene
-                        ? 'bg-primary/20 text-primary border border-primary/30'
-                        : 'bg-muted text-muted-foreground hover:text-foreground border border-transparent'
-                    }`}
-                    onClick={() => {
-                      tuningConfig.showDebugScene = !tuningConfig.showDebugScene
-                      setDebugScene(tuningConfig.showDebugScene)
-                    }}
-                    title="Show 3D debug markers: camera position, hip center, look-at target"
-                  >
-                    🎯 Scene
-                  </button>
-                  <button
-                    className="px-2 py-0.5 text-xs rounded bg-muted text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border"
-                    onClick={() => setViewMode(viewMode === 'studio' ? 'performance' : 'studio')}
-                    title="Performance mode: fullscreen avatar with transparent background for OBS capture"
-                  >
-                    🎬 Performance
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 bg-muted">
-                <canvas
-                  ref={canvasRef}
-                  id="avatar-canvas"
-                  className="w-full h-full"
-                />
-              </div>
-            </div>
-          </div>
+          <StudioView
+            videoRef={videoRef}
+            canvasRef={canvasRef}
+            state={state}
+            error={error}
+            avatarUrl={avatarUrl}
+            showDebugOverlay={showDebugOverlay}
+            overlayLayers={overlayLayers}
+            latestLandmarks={latestLandmarks}
+            latestBlendShapes={latestBlendShapes}
+            showDebugScene={tuningConfig.showDebugScene}
+            showTuningPanel={showTuningPanel}
+            pipVisible={pipVisible}
+            onStart={handleStart}
+            onStop={handleStop}
+            onDestroy={handleDestroy}
+            onToggleDebug={() => setShowDebugOverlay(prev => !prev)}
+            onToggleDebugScene={() => {
+              tuningConfig.showDebugScene = !tuningConfig.showDebugScene
+              setDebugScene(tuningConfig.showDebugScene)
+            }}
+            onToggleTuning={() => setShowTuningPanel(prev => !prev)}
+            onTogglePip={() => setPipVisible(prev => !prev)}
+            onSetViewMode={setViewMode}
+          />
         )}
 
         {/* Performance View — fullscreen avatar, transparent background for OBS */}
@@ -382,47 +291,6 @@ export function App() {
                 </button>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Controls footer — studio mode only */}
-        {activeTab === 'studio' && viewMode === 'studio' && (
-          <div className="flex items-center justify-center gap-3 border-t border-border px-6 py-3">
-            {state.status === 'idle' && (
-              <button
-                className={avatarUrl ? 'btn-primary' : 'btn-primary opacity-40 cursor-not-allowed'}
-                onClick={handleStart}
-                disabled={!avatarUrl}
-              >
-                {avatarUrl ? 'Start Tracking' : 'Select an Avatar →'}
-              </button>
-            )}
-            {state.status === 'tracking' && (
-              <>
-                <button className="bg-destructive/10 text-destructive hover:bg-destructive/20 px-6 py-2.5 rounded-md font-medium text-sm transition-colors" onClick={handleStop}>
-                  Stop
-                </button>
-                <button className="btn-outline" onClick={handleDestroy}>
-                  Reset
-                </button>
-              </>
-            )}
-            {state.status === 'initializing' && (
-              <button className="btn-primary opacity-60 cursor-not-allowed" disabled>
-                Initializing…
-              </button>
-            )}
-            {(state.status === 'error' || state.status === 'stopped') && (
-              <>
-                <button className="btn-outline" onClick={handleStart}>
-                  Retry
-                </button>
-                <button className="px-6 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={handleDestroy}>
-                  Reset
-                </button>
-              </>
-            )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         )}
 
